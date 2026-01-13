@@ -1,0 +1,19 @@
+services:
+  api:
+    build: .
+    container_name: ct_api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env        # ✅ PAS app/.env
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7
+    container_name: ct_redis
+    ports:
+      - "6379:6379"
