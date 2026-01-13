@@ -1,0 +1,112 @@
+:root {
+  --muted: #64748b;
+  --ink: #0f172a;
+  --surface: #ffffff;
+  --accent: #ff8a5c;
+  --accent-2: #ffc187;
+}
+
+body {
+  font-family: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(900px 500px at 15% 10%, #fff4e9 0%, rgba(255, 244, 233, 0) 60%),
+    radial-gradient(900px 500px at 85% 80%, #edf7ff 0%, rgba(237, 247, 255, 0) 55%),
+    #f6f7fb;
+}
+
+.card {
+  max-width: 520px;
+  width: min(92vw, 520px);
+  padding: 36px;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 20px 50px rgba(20, 40, 60, 0.15);
+  text-align: center;
+}
+
+.muted { color: var(--muted); margin: 0; }
+
+.row {
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+button {
+  padding: 12px 18px;
+  border-radius: 14px;
+  border: 0;
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  color: #1f2937;
+  font-weight: 600;
+  box-shadow: 0 10px 24px rgba(255, 159, 122, 0.35);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button:focus-visible, a:focus-visible {
+  outline: 2px solid #111;
+  outline-offset: 2px;
+}
+
+
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #bbb;
+  font-size: 12px;
+}
+
+.badge.ok { border-color: #2e7d32; }
+.badge.warn { border-color: #ed6c02; }
+
+.hint {
+  font-size: 12px;
+  color: #777;
+  margin-top: 16px;
+  line-height: 1.45;
+}
+
+a { color: #0b62d6; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.error {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #c62828;
+  background: #fff5f5;
+  color: #7a1c1c;
+  font-size: 13px;
+}
+
+.brand {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  margin-bottom: 10px;
+  color: var(--ink);
+}
+
+.subtitle {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0 auto;
+  max-width: 360px;
+}
+
+.actions {
+  justify-content: center;
+}
