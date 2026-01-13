@@ -26,6 +26,18 @@ POST_LOGOUT_REDIRECT = "/auth"
 OAUTH_STATE_MAX_AGE = 60 * 10  # 10 minutes
 
 
+def _redirect_uri(request: Request) -> str:
+    """Retourne l'URI de redirection à utiliser pour OAuth.
+
+    Priorité : variable d'env `ATLASSIAN_REDIRECT_URI` si définie, sinon construction
+    depuis l'objet `request` (utile dans des environnements dynamiques type GitLab).
+    """
+    if getattr(settings, "atlassian_redirect_uri", None):
+        return settings.atlassian_redirect_uri
+    # fallback : construire l'URL absolue pour la route `oauth_callback`
+    return str(request.url_for("oauth_callback"))
+
+
 async def _get_accessible_resources(access_token: str) -> list[dict]:
     headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
     async with httpx.AsyncClient(timeout=30) as client:
@@ -63,7 +75,7 @@ async def login(request: Request):
         "audience": "api.atlassian.com",
         "client_id": settings.atlassian_client_id,
         "scope": settings.atlassian_scopes,
-        "redirect_uri": settings.atlassian_redirect_uri,
+        "redirect_uri": _redirect_uri(request),
         "response_type": "code",
         "prompt": "consent",
         "state": state,
@@ -112,7 +124,7 @@ async def oauth_callback(
         "client_id": settings.atlassian_client_id,
         "client_secret": settings.atlassian_client_secret,
         "code": code,
-        "redirect_uri": settings.atlassian_redirect_uri,
+        "redirect_uri": _redirect_uri(request),
     }
 
     async with httpx.AsyncClient(timeout=30) as client:
