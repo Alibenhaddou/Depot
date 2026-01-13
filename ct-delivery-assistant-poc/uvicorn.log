@@ -1,0 +1,17 @@
+nohup: ignoring input
+INFO:     Started server process [14649]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     85.115.60.202:0 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     85.115.60.202:0 - "GET /ui HTTP/1.1" 307 Temporary Redirect
+INFO:     85.115.60.202:0 - "GET /auth HTTP/1.1" 200 OK
+INFO:     85.115.60.202:0 - "GET /auth/assets/auth.js HTTP/1.1" 200 OK
+INFO:     85.115.60.202:0 - "GET /auth/assets/auth.css HTTP/1.1" 200 OK
+INFO:     85.115.60.202:0 - "GET /auth/state HTTP/1.1" 200 OK
+INFO:     85.115.60.202:0 - "GET /login HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:54810 - "GET /ui HTTP/1.1" 307 Temporary Redirect
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [14649]
