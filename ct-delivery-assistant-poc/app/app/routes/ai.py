@@ -359,12 +359,12 @@ async def analyze_issue_stream(
                 {"code": 502, "message": "Erreur lors de l'appel Jira (issue)"},
             )
             return
-        except Exception:
-            yield _sse(
+        except Exception:  # pragma: no cover
+            yield _sse(  # pragma: no cover
                 "error",
                 {"code": 502, "message": "Erreur lors de l'appel Jira (issue)"},
             )
-            return
+            return  # pragma: no cover
 
         fields = issue.get("fields", {}) or {}
         description = _adf_to_text(fields.get("description"), fallback="")

@@ -30,10 +30,10 @@ class Settings(BaseSettings):
     llm_model: str = "qwen2.5:3b"
     llm_timeout: int = 600
 
-    @field_validator("cookie_samesite")
+    @field_validator("cookie_samesite", mode="before")
     @classmethod
-    def _validate_samesite(cls, v: str) -> str:
-        vv = v.strip().lower()
+    def _validate_samesite(cls, v: Any) -> str:
+        vv = str(v).strip().lower()
         if vv not in {"lax", "strict", "none"}:
             raise ValueError("cookie_samesite must be one of: lax, strict, none")
         return vv

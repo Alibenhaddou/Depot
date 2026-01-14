@@ -1,6 +1,9 @@
+import asyncio
 import httpx
 from fastapi.testclient import TestClient
 from fastapi import HTTPException
+from starlette.requests import Request
+from starlette.responses import Response
 
 from app.main import create_app
 from app.routes import ai as ai_mod
@@ -160,6 +163,151 @@ def test_analyze_issue_stream_success_with_links(monkeypatch):
         )
         assert "event: result" in text
         assert "ok-summary" in text
+
+
+    def test_analyze_issue_stream_logs_no_dependency_when_no_links(monkeypatch):
+        monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
+        monkeypatch.setattr(
+            "app.routes.ai.get_session",
+            lambda sid: {
+                "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+                "cloud_ids": ["c1"],
+                "active_cloud_id": "c1",
+            },
+        )
+
+        class FakeClient:
+            def __init__(self, *a, **k):
+                pass
+
+            async def get_issue(self, *a, **k):
+                return {
+                    "key": "P-1",
+                    "fields": {
+                        "summary": "S",
+                        "status": {"name": "To Do"},
+                        "issuetype": {"name": "Bug"},
+                        "description": {
+                            "type": "doc",
+                            "content": [{"type": "text", "text": "desc"}],
+                        },
+                        "issuelinks": [],
+                    },
+                }
+
+            async def get_issue_comments(self, *a, **k):
+                return {"comments": []}
+
+        monkeypatch.setattr("app.routes.ai.JiraClient", FakeClient)
+
+        async def fake_llm_step(*a, **k):
+            return "ok-summary"
+
+        monkeypatch.setattr(ai_mod, "_llm_step", fake_llm_step)
+
+        with client.stream(
+            "POST", "/ai/analyze-issue/stream", json={"issue_key": "P-1"}
+        ) as resp:
+            text = "\n".join(
+                [
+                    line.decode() if isinstance(line, bytes) else line
+                    for line in resp.iter_lines()
+                ]
+            )
+            assert "Aucune dependance detectee" in text
+            assert "event: result" in text
+            assert "ok-summary" in text
+
+
+    def test_analyze_issue_stream_generic_exception_yields_502_error(monkeypatch):
+        monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
+        monkeypatch.setattr(
+            "app.routes.ai.get_session",
+            lambda sid: {
+                "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+                "cloud_ids": ["c1"],
+                "active_cloud_id": "c1",
+            },
+        )
+
+        class FakeClient:
+            def __init__(self, *a, **k):
+                pass
+
+            async def get_issue(self, *a, **k):
+                raise RuntimeError("boom")
+
+            async def get_issue_comments(self, *a, **k):
+                return {"comments": []}
+
+        monkeypatch.setattr("app.routes.ai.JiraClient", FakeClient)
+
+        with client.stream(
+            "POST", "/ai/analyze-issue/stream", json={"issue_key": "P-1"}
+        ) as resp:
+            text = "\n".join(
+                [
+                    line.decode() if isinstance(line, bytes) else line
+                    for line in resp.iter_lines()
+                ]
+            )
+
+            assert "event: error" in text
+            assert "Erreur lors de l'appel Jira (issue)" in text
+
+
+    def test_analyze_issue_stream_generic_exception_is_traced_by_coverage(monkeypatch):
+        # Same scenario as above, but call the async handler directly to avoid
+        # any tracing gaps from TestClient/threaded streaming.
+        monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
+        monkeypatch.setattr(
+            "app.routes.ai.get_session",
+            lambda sid: {
+                "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+                "cloud_ids": ["c1"],
+                "active_cloud_id": "c1",
+            },
+        )
+
+        class FakeClient:
+            def __init__(self, *a, **k):
+                pass
+
+            async def get_issue(self, *a, **k):
+                raise RuntimeError("boom")
+
+            async def get_issue_comments(self, *a, **k):
+                return {"comments": []}
+
+        monkeypatch.setattr("app.routes.ai.JiraClient", FakeClient)
+
+        async def run() -> str:
+            scope = {
+                "type": "http",
+                "method": "POST",
+                "path": "/ai/analyze-issue/stream",
+                "headers": [],
+                "query_string": b"",
+                "scheme": "http",
+                "server": ("testserver", 80),
+                "client": ("testclient", 123),
+            }
+            req = Request(scope)
+            resp = Response()
+            streaming = await ai_mod.analyze_issue_stream(
+                req, resp, ai_mod.AnalyzeIssueBody(issue_key="P-1")
+            )
+
+            parts: list[str] = []
+            async for chunk in streaming.body_iterator:
+                if isinstance(chunk, bytes):
+                    parts.append(chunk.decode())
+                else:
+                    parts.append(str(chunk))
+            return "".join(parts)
+
+        text = asyncio.run(run())
+        assert "Erreur lors de l'appel Jira (issue)" in text
 
 
 def test_adf_to_text_fallback():

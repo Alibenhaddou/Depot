@@ -37,6 +37,20 @@ def test_get_session_parses_and_refreshes_ttl(monkeypatch):
     assert called["expire"] == ("session:sid", 12345)
 
 
+def test_get_session_falls_back_to_local_store_when_redis_down(monkeypatch):
+    core_redis._local_store.clear()
+    core_redis._local_store["session:sid"] = json.dumps({"x": 1})
+
+    def raising_get(_k):
+        raise RuntimeError("redis down")
+
+    # expire missing/raising should be ignored
+    fake = types.SimpleNamespace(get=raising_get, expire=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("expire")))
+    monkeypatch.setattr(core_redis, "redis_client", fake)
+
+    assert core_redis.get_session("sid") == {"x": 1}
+
+
 def test_set_session_calls_set(monkeypatch):
     captured = {}
 
@@ -55,6 +69,19 @@ def test_set_session_calls_set(monkeypatch):
     assert captured["ex"] == 42
 
 
+def test_set_session_falls_back_to_local_store_on_error(monkeypatch):
+    core_redis._local_store.clear()
+
+    def raising_set(*_a, **_k):
+        raise RuntimeError("redis down")
+
+    monkeypatch.setattr(core_redis, "redis_client", types.SimpleNamespace(set=raising_set))
+    monkeypatch.setattr(config.settings, "session_max_age_seconds", 42)
+
+    core_redis.set_session("sid", {"k": "v"})
+    assert json.loads(core_redis._local_store["session:sid"]) == {"k": "v"}
+
+
 def test_delete_session_calls_delete(monkeypatch):
     called = {}
 
@@ -66,3 +93,16 @@ def test_delete_session_calls_delete(monkeypatch):
 
     core_redis.delete_session("sid")
     assert called["k"] == "session:sid"
+
+
+def test_delete_session_falls_back_to_local_store_on_error(monkeypatch):
+    core_redis._local_store.clear()
+    core_redis._local_store["session:sid"] = json.dumps({"a": 1})
+
+    def raising_delete(_k):
+        raise RuntimeError("redis down")
+
+    monkeypatch.setattr(core_redis, "redis_client", types.SimpleNamespace(delete=raising_delete))
+    core_redis.delete_session("sid")
+
+    assert "session:sid" not in core_redis._local_store
