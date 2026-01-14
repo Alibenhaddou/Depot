@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict
+from typing import Any
 
 import httpx
 from fastapi import HTTPException
@@ -13,7 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 def _log_http_status(e: httpx.HTTPStatusError) -> None:
-    """Helper to log HTTPStatusError in a compact way."""
+    """Log a compact summary for an httpx.HTTPStatusError.
+
+    This avoids dumping large response bodies into logs while preserving
+    the important fields (status code, request URL and a short snippet).
+    """
     status = e.response.status_code
     req_url = e.request.url
     snippet = (e.response.text or "")[:300]

@@ -1,6 +1,7 @@
 import os
 import sys
 import types
+import importlib
 
 # Ensure the package 'app' (ct-delivery-assistant-poc/app) is importable during tests
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app"))
@@ -10,10 +11,9 @@ if ROOT not in sys.path:
 # Provide minimal stubs for third-party modules that may not be installed
 # so tests can import the package modules without failing at collection time.
 # Try importing the real packages first, only create stubs on ImportError.
-import importlib
-import os
 
-# Ensure required env vars exist so pydantic BaseSettings can be constructed during imports
+# Ensure required env vars exist so pydantic BaseSettings can be
+# constructed during imports
 os.environ.setdefault("atlassian_client_id", "test-id")
 os.environ.setdefault("atlassian_client_secret", "test-secret")
 os.environ.setdefault("atlassian_redirect_uri", "http://localhost/cb")

@@ -20,12 +20,17 @@ def _key(sid: str) -> str:
 
 
 def get_session(sid: str) -> Optional[Dict[str, Any]]:
+    """Retrieve a stored session dict from Redis by SID.
+
+    Returns None if the key is missing or contains invalid JSON. On success the
+    function refreshes the TTL (sliding session expiration).
+    """
     key = _key(sid)
     raw = redis_client.get(key)
     if not raw:
         return None
     try:
-        session = cast(Dict[str, Any], json.loads(raw))
+        session = cast(Dict[str, Any], json.loads(cast(str, raw)))
     except Exception:
         return None
 

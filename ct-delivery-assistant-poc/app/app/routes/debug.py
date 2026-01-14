@@ -26,6 +26,11 @@ def _enabled() -> bool:
 
 
 def _require_enabled() -> None:
+    """Raise a 404 if the debug routes are not enabled.
+
+    We prefer a 404 (not found) over 403 to keep debug endpoints quiet in
+    production logs (security by minimization).
+    """
     if not _enabled():
         # 404 plutôt que 403 => moins “bruyant” (security by minimization)
         raise HTTPException(status_code=404, detail="Not found")
@@ -76,11 +81,13 @@ async def debug_session(request: Request) -> Dict[str, Any]:
     for s in jira_sites:
         if not isinstance(s, dict):
             continue
-        safe_sites.append({
-            "id": s.get("id"),
-            "name": s.get("name"),
-            "url": s.get("url"),  # keep URL but avoid leaking full object
-        })
+        safe_sites.append(
+            {
+                "id": s.get("id"),
+                "name": s.get("name"),
+                "url": s.get("url"),  # keep URL but avoid leaking full object
+            }
+        )
 
     return {
         "sid_fingerprint": _fingerprint(sid),

@@ -19,13 +19,13 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 llm = LLMClient()
 
 
-class SummarizeJqlBody(BaseModel):  # type: ignore[misc]
+class SummarizeJqlBody(BaseModel):
     jql: str = Field(min_length=1, max_length=2000)
     max_results: int = Field(default=20, ge=1, le=50)
     cloud_id: Optional[str] = None
 
 
-class AnalyzeIssueBody(BaseModel):  # type: ignore[misc]
+class AnalyzeIssueBody(BaseModel):
     issue_key: str = Field(min_length=1, max_length=50)
     cloud_id: Optional[str] = None
     max_links: int = Field(default=2, ge=1, le=12)
@@ -33,12 +33,17 @@ class AnalyzeIssueBody(BaseModel):  # type: ignore[misc]
 
 
 def _simplify_issues(data: Dict[str, Any], limit: int) -> List[Dict[str, Any]]:
+    """Normalize search results into a compact list of issues.
+
+    This helper extracts the minimal fields used by the UI and truncates
+    long summaries to avoid excessive payload sizes.
+    """
     items = data.get("issues") or data.get("values") or []
     out: List[Dict[str, Any]] = []
 
     for it in items[:limit]:
         f = it.get("fields", {}) or {}
-        summary = (f.get("summary") or "")
+        summary = f.get("summary") or ""
         if len(summary) > 300:
             summary = summary[:300] + "…"
 
@@ -111,6 +116,12 @@ def _extract_links(fields: Dict[str, Any], limit: int) -> List[Dict[str, Any]]:
 
 
 def _sse(event: str, data: Dict[str, Any] | str) -> str:
+    """Format a Server-Sent Events (SSE) line for an event.
+
+    The function returns a string compliant with EventSource ("event: ..\n"
+    "data: ..\n\n"). JSON payloads are encoded with ensure_ascii=False to
+    preserve UTF-8 characters.
+    """
     payload = data if isinstance(data, str) else json.dumps(data, ensure_ascii=False)
     return f"event: {event}\ndata: {payload}\n\n"
 
@@ -131,7 +142,9 @@ async def _llm_step(
 
 
 @router.post("/summarize-jql")
-async def summarize_jql(request: Request, response: Response, body: SummarizeJqlBody) -> Dict[str, Any]:
+async def summarize_jql(
+    request: Request, response: Response, body: SummarizeJqlBody
+) -> Dict[str, Any]:
     sid = ensure_session(request, response)
     session = get_session(sid) or {}
 
@@ -309,8 +322,10 @@ async def analyze_issue_stream(
     chosen_cloud = body.cloud_id or select_cloud_id(session, request)
     entry = (session.get("tokens_by_cloud") or {}).get(chosen_cloud)
     if not entry:
+
         async def err_stream() -> AsyncIterator[str]:
             yield _sse("error", {"code": 401, "message": "Instance non connectée."})
+
         return StreamingResponse(err_stream(), media_type="text/event-stream")
 
     client = JiraClient(access_token=entry["access_token"], cloud_id=chosen_cloud)
@@ -423,9 +438,10 @@ async def analyze_issue_stream(
             )
 
             yield _sse("log", "Analyse IA des commentaires…")
-            comments_text = "\n".join(
-                f"- {c.get('author')}: {c.get('body')}" for c in comments
-            ) or "Aucun commentaire."
+            comments_text = (
+                "\n".join(f"- {c.get('author')}: {c.get('body')}" for c in comments)
+                or "Aucun commentaire."
+            )
             comments_summary = await _llm_step(
                 llm,
                 title="Commentaires",
@@ -437,13 +453,16 @@ async def analyze_issue_stream(
             )
 
             yield _sse("log", "Analyse IA des dependances…")
-            deps_text = "\n".join(
-                (
-                    f"- {d.get('key')} ({d.get('relation')} {d.get('direction')}): "
-                    f"{d.get('summary')} [{d.get('status')}]"
+            deps_text = (
+                "\n".join(
+                    (
+                        f"- {d.get('key')} ({d.get('relation')} {d.get('direction')}): "
+                        f"{d.get('summary')} [{d.get('status')}]"
+                    )
+                    for d in linked_issues
                 )
-                for d in linked_issues
-            ) or "Aucune dependance."
+                or "Aucune dependance."
+            )
             deps_summary = await _llm_step(
                 llm,
                 title="Dependances",
@@ -456,8 +475,7 @@ async def analyze_issue_stream(
 
             yield _sse("log", "Synthese finale…")
             final_system = system + (
-                " Reponds en FRANCAIS avec un texte structure, "
-                "clair et actionnable."
+                " Reponds en FRANCAIS avec un texte structure, " "clair et actionnable."
             )
             final_user = (
                 "A partir des syntheses ci-dessous, produis un etat des lieux :\n"

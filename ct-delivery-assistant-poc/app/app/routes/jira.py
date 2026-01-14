@@ -71,6 +71,12 @@ def _map_search_result(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _jira_client_from_session(session: Dict[str, Any], request: Request) -> JiraClient:
+    """Create a JiraClient using credentials stored in the user's session.
+
+    Performs sanity checks: the user must be logged in (tokens present) and the
+    selected `cloud_id` must exist and contain an access token. If not, a
+    401 HTTPException is raised so the caller can return an appropriate error.
+    """
     _require_logged_in(session)
     cloud_id = select_cloud_id(session, request)
 

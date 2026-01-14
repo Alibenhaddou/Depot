@@ -48,7 +48,7 @@ def set_sid_cookie(response: Response, sid: str) -> None:
         value=_sid_serializer.dumps(sid),
         httponly=True,
         samesite=settings.cookie_samesite,  # ex: "lax"
-        secure=settings.cookie_secure,      # True en prod https
+        secure=settings.cookie_secure,  # True en prod https
         path="/",
         max_age=settings.session_max_age_seconds,  # ex: 8h
     )

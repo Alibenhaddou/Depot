@@ -1,8 +1,4 @@
-import os
-import types
-
 from fastapi.testclient import TestClient
-from fastapi.responses import Response
 
 from app.main import create_app
 
@@ -23,6 +19,7 @@ def test_debug_cookie_and_session(monkeypatch):
 
     # recreate app so router inclusion reflects the env var
     from app.main import create_app
+
     app_local = create_app()
     local_client = TestClient(app_local)
 
@@ -34,7 +31,14 @@ def test_debug_cookie_and_session(monkeypatch):
 
     # with sid and session
     monkeypatch.setattr("app.routes.debug.get_sid", lambda req: "s1")
-    session = {"access_token": "t", "tokens_by_cloud": {"c1": {}}, "jira_sites": [{"id": "c1", "name": "C1", "url": "https://x"}], "cloud_ids": ["c1"], "active_cloud_id": "c1", "site_url": "u"}
+    session = {
+        "access_token": "t",
+        "tokens_by_cloud": {"c1": {}},
+        "jira_sites": [{"id": "c1", "name": "C1", "url": "https://x"}],
+        "cloud_ids": ["c1"],
+        "active_cloud_id": "c1",
+        "site_url": "u",
+    }
     monkeypatch.setattr("app.routes.debug.get_session", lambda sid: session)
 
     r2 = local_client.get("/debug/cookie")
@@ -56,7 +60,7 @@ def test_ui_page_and_state(monkeypatch):
     monkeypatch.setattr("app.routes.ui.ensure_session", lambda req, resp: "sid-ui")
     monkeypatch.setattr("app.routes.ui.get_session", lambda sid: {})
 
-    r = client.get("/ui", allow_redirects=False)
+    r = client.get("/ui", follow_redirects=False)
     assert r.status_code in (302, 307) or r.headers.get("location") == "/auth"
 
     # logged in -> return HTML

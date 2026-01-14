@@ -1,8 +1,8 @@
-import json
 import asyncio
 
 import httpx
 import pytest
+import types
 
 from app.clients.llm import LLMClient
 from app.core import config
@@ -24,7 +24,9 @@ class FakeBadClient:
 
     async def post(self, url, json=None):
         # simulate HTTP error
-        raise httpx.HTTPStatusError(message="err", request=None, response=BadResponse(status=500, text="server"))
+        raise httpx.HTTPStatusError(
+            message="err", request=None, response=BadResponse(status=500, text="server")
+        )
 
     async def aclose(self):
         return None
@@ -36,7 +38,11 @@ class FakeInvalidJsonClient:
 
     async def post(self, url, json=None):
         # return success but invalid JSON payload (string that's not JSON)
-        return types.SimpleNamespace(status_code=200, text='{"choices": [{"message": {"content": "not-a-json"}}]}', json=lambda: {"choices": [{"message": {"content": 'not-a-json'}}]})
+        return types.SimpleNamespace(
+            status_code=200,
+            text='{"choices": [{"message": {"content": "not-a-json"}}]}',
+            json=lambda: {"choices": [{"message": {"content": "not-a-json"}}]},
+        )
 
     async def aclose(self):
         return None
@@ -73,7 +79,11 @@ def test_chat_json_openai_invalid_json(monkeypatch):
             pass
 
         async def post(self, url, json=None):
-            return types.SimpleNamespace(status_code=200, text='{"choices": [{"message": {"content": "not-a-json"}}]}', json=lambda: {"choices": [{"message": {"content": 'not-a-json'}}]})
+            return types.SimpleNamespace(
+                status_code=200,
+                text='{"choices": [{"message": {"content": "not-a-json"}}]}',
+                json=lambda: {"choices": [{"message": {"content": "not-a-json"}}]},
+            )
 
         async def aclose(self):
             return None

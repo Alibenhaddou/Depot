@@ -1,6 +1,3 @@
-import types
-import time
-
 from fastapi import Response
 import pytest
 

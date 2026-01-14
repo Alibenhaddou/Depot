@@ -16,7 +16,7 @@ _UI_DIR = _APP_DIR / "ui" / "poc"
 _HTML = (_UI_DIR / "poc.html").read_text(encoding="utf-8")
 
 
-class UiState(BaseModel):  # type: ignore[misc]
+class UiState(BaseModel):
     logged_in: bool
     login_url: str = "/login"
     logout_url: str = "/logout"
@@ -24,7 +24,7 @@ class UiState(BaseModel):  # type: ignore[misc]
 
 
 @router.get("", response_class=HTMLResponse)
-async def ui_page(request: Request) -> HTMLResponse:
+async def ui_page(request: Request) -> Response:
     resp = HTMLResponse(_HTML)
     sid = ensure_session(request, resp)
     session = get_session(sid) or {}

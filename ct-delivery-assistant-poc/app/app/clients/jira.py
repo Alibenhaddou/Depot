@@ -6,6 +6,13 @@ import httpx
 
 
 class JiraClient:
+    """Thin async client for the Atlassian Jira Cloud REST API (ex/jira).
+
+    The implementation is intentionally small: it provides a thin wrapper
+    around httpx.AsyncClient and normalizes HTTP error handling into
+    application-level exceptions used by the routes.
+    """
+
     def __init__(self, access_token: str, cloud_id: str, timeout: int = 30):
         self.access_token = access_token
         self.cloud_id = cloud_id
@@ -33,6 +40,12 @@ class JiraClient:
         params: Optional[Dict[str, Any]] = None,
         json_body: Optional[Dict[str, Any]] = None,
     ) -> Any:
+        """Perform an HTTP request to the Jira Ex API and normalize errors.
+
+        Returns parsed JSON on success. Raises PermissionError on 401 or
+        propagates an httpx.HTTPStatusError with a short snippet for other
+        HTTP error responses.
+        """
         url = f"{self._ex_base_url}{path}"
 
         r = await self._client.request(
@@ -115,8 +128,6 @@ class JiraClient:
             raise
 
 
-from typing import Dict
-
 def select_cloud_id(session: Dict[str, Any], request: Request) -> str:
     """
     Détermine quelle instance Jira utiliser pour la requête courante.
@@ -130,9 +141,9 @@ def select_cloud_id(session: Dict[str, Any], request: Request) -> str:
     - si cloud_ids est vide mais tokens_by_cloud existe, on dérive cloud_ids
     """
     tbc = session.get("tokens_by_cloud") or {}
-    cloud_ids: list[str] = cast(list[str], session.get("cloud_ids") or list(tbc.keys()))
+    cloud_ids: list[str] = session.get("cloud_ids") or list(tbc.keys())
 
-    requested: Optional[str] = cast(Optional[str], request.query_params.get("cloud_id"))
+    requested: Optional[str] = request.query_params.get("cloud_id")
     if requested:
         if requested not in cloud_ids:
             raise HTTPException(400, "cloud_id inconnu ou non connecté")
