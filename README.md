@@ -3,6 +3,8 @@
 [![Test & Coverage](https://github.com/Alibenhaddou/Depot/actions/workflows/tests.yml/badge.svg)](https://github.com/Alibenhaddou/Depot/actions/workflows/tests.yml)
 [![Security](https://github.com/Alibenhaddou/Depot/actions/workflows/security.yml/badge.svg)](https://github.com/Alibenhaddou/Depot/actions/workflows/security.yml)
 [![Docker Image CI](https://github.com/Alibenhaddou/Depot/actions/workflows/docker-image.yml/badge.svg)](https://github.com/Alibenhaddou/Depot/actions/workflows/docker-image.yml)
+[![Sonar](https://sonarcloud.io/api/project_badges/measure?project=Alibenhaddou_Depot&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Alibenhaddou_Depot)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Alibenhaddou_Depot&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Alibenhaddou_Depot)
 
 ## Description
 
