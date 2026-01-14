@@ -42,6 +42,18 @@ async def _get_accessible_resources(access_token: str) -> Any:
     headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.get(ACCESSIBLE_RESOURCES_URL, headers=headers)
+
+    # Debug: log status and body (truncated) for diagnosing missing Jira resources
+    try:
+        txt = r.text
+    except Exception:
+        txt = "(no body)"
+    import logging
+
+    logging.getLogger(__name__).info(
+        "Accessible-resources response: status=%s, body=%s", r.status_code, txt[:400]
+    )
+
     if r.status_code >= 400:
         raise HTTPException(502, "Erreur accessible-resources")
     return cast(Any, r.json())
