@@ -51,7 +51,10 @@ def test_debug_cookie_and_session(monkeypatch):
         },
     )
 
-    r2 = c.get("/debug/cookie", cookies={"sid": "v", "oauth_state": "o"})
+    # set cookies on the client instance (avoid per-request cookies deprecation)
+    c.cookies.set("sid", "v")
+    c.cookies.set("oauth_state", "o")
+    r2 = c.get("/debug/cookie")
     assert r2.json()["sid_cookie_present"] is True
     assert r2.json()["redis_session_present"] is True
     assert r2.json()["has_access_token"] is True
