@@ -134,16 +134,30 @@ async def oauth_callback(
             headers={"Accept": "application/json"},
         )
 
+    # Debug logging: status and presence of token (do NOT log the token itself)
+    try:
+        txt = r.text
+    except Exception:
+        txt = "(no body)"
+    import logging
+
+    logging.getLogger(__name__).info(
+        "Token endpoint response: status=%s, body=%s", r.status_code, txt[:200]
+    )
+
     if r.status_code >= 400:
         raise HTTPException(502, "Erreur token Atlassian")
 
     tok = r.json()
     access_token = tok.get("access_token")
+    logging.getLogger(__name__).info("Token endpoint returned access_token=%s", bool(access_token))
     if not access_token:
         raise HTTPException(400, "Réponse token inattendue")
 
     resources = await _get_accessible_resources(access_token)
+    logging.getLogger(__name__).info("Accessible resources count: %s", len(resources))
     jira_resources = _pick_jira_resources(resources)
+    logging.getLogger(__name__).info("Jira resources found: %s", [r.get("id") for r in jira_resources])
     if not jira_resources:
         raise HTTPException(400, "Aucune ressource Jira trouvée")
 
