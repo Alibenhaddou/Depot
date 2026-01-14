@@ -211,8 +211,15 @@ async def oauth_callback(
     session.pop("state", None)
     set_session(sid, session)
 
+    import logging
+    logging.getLogger(__name__).info("Session after token exchange for sid=%s: %s", sid, session)
+
     resp = RedirectResponse(url=POST_LOGIN_REDIRECT)
     ensure_session(request, resp)
+    # log cookies set on response
+    logging.getLogger(__name__).info(
+        "Response cookies after login: %s", resp.headers.get("set-cookie")
+    )
     resp.delete_cookie("oauth_state", path="/")
     return resp
 

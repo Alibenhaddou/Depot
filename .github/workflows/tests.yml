@@ -40,3 +40,22 @@ jobs:
         with:
           name: coverage-xml
           path: ct-delivery-assistant-poc/coverage.xml
+
+      - name: Fail if coverage < 100%
+        working-directory: ct-delivery-assistant-poc
+        run: |
+          python - << 'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+          try:
+              root = ET.parse('coverage.xml').getroot()
+              line_rate = float(root.get('line-rate', '0'))
+              pc = int(line_rate * 100 + 0.5)
+              print(f'Coverage: {pc}%')
+              if pc < 100:
+                  print('Coverage threshold not met (100%)')
+                  sys.exit(1)
+          except Exception as e:
+              print('Failed to verify coverage:', e)
+              sys.exit(1)
+          PY
