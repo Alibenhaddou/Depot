@@ -9,9 +9,19 @@ __pycache__/
 # Coverage
 ct-delivery-assistant-poc/.coverage
 ct-delivery-assistant-poc/htmlcov/
+ct-delivery-assistant-poc/coverage.xml
+.coverage
+
+# Local env / secrets
+ct-delivery-assistant-poc/.env
+ct-delivery-assistant-poc/env
+ct-delivery-assistant-poc/sessions.json
 
 # Logs
 uvicorn_server.log
+
+# Editor backups / stray files
+Coucou~
 
 # IDE / Editor
 .vscode/
