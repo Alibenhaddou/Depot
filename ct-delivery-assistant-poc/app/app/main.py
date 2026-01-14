@@ -16,6 +16,11 @@ from fastapi.responses import RedirectResponse
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
+    """Return a boolean flag from environment variables.
+
+    Interprets common truthy values (1, true, yes, y, on) in a case-insensitive
+    way and falls back to `default` if the env var is not present.
+    """
     v = os.getenv(name)
     if v is None:
         return default

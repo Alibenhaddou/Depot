@@ -67,7 +67,7 @@ def test_login_sets_state_and_cookie(monkeypatch):
     monkeypatch.setattr("app.routes.auth.set_session", fake_set_session)
     monkeypatch.setattr("app.routes.auth.get_session", lambda sid: {})
 
-    r = client.get("/login", allow_redirects=False)
+    r = client.get("/login", follow_redirects=False)
     assert r.status_code in (307, 302)
     # oauth_state cookie should be set
     cookies = r.headers.get_list("set-cookie")
@@ -120,7 +120,7 @@ def test_oauth_callback_success(monkeypatch):
 
     monkeypatch.setattr("app.routes.auth.set_session", fake_set_session)
 
-    r = client.get("/oauth/callback?code=code&state=s123", allow_redirects=False)
+    r = client.get("/oauth/callback?code=code&state=s123", follow_redirects=False)
     assert r.status_code in (307, 302)
     assert captured["sess"]["tokens_by_cloud"]["c1"]["access_token"] == "atok"
     assert captured["sess"]["active_cloud_id"] == "c1"
@@ -130,7 +130,7 @@ def test_oauth_callback_bad_state(monkeypatch):
     monkeypatch.setattr("app.routes.auth.ensure_session", lambda req, resp: "sid")
     monkeypatch.setattr("app.routes.auth.get_session", lambda sid: {})
 
-    r = client.get("/oauth/callback?code=code&state=wrong", allow_redirects=False)
+    r = client.get("/oauth/callback?code=code&state=wrong", follow_redirects=False)
     assert r.status_code == 400
 
 
@@ -138,7 +138,7 @@ def test_logout_calls_destroy(monkeypatch):
     called = {"ok": False}
     monkeypatch.setattr("app.routes.auth.destroy_session", lambda req, resp: called.update({"ok": True}))
 
-    r = client.get("/logout", allow_redirects=False)
+    r = client.get("/logout", follow_redirects=False)
     assert r.status_code in (307, 302)
     assert called["ok"]
 

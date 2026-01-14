@@ -56,7 +56,7 @@ def test_ui_page_and_state(monkeypatch):
     monkeypatch.setattr("app.routes.ui.ensure_session", lambda req, resp: "sid-ui")
     monkeypatch.setattr("app.routes.ui.get_session", lambda sid: {})
 
-    r = client.get("/ui", allow_redirects=False)
+    r = client.get("/ui", follow_redirects=False)
     assert r.status_code in (302, 307) or r.headers.get("location") == "/auth"
 
     # logged in -> return HTML

@@ -33,6 +33,11 @@ class AnalyzeIssueBody(BaseModel):  # type: ignore[misc]
 
 
 def _simplify_issues(data: Dict[str, Any], limit: int) -> List[Dict[str, Any]]:
+    """Normalize search results into a compact list of issues.
+
+    This helper extracts the minimal fields used by the UI and truncates
+    long summaries to avoid excessive payload sizes.
+    """
     items = data.get("issues") or data.get("values") or []
     out: List[Dict[str, Any]] = []
 
@@ -111,6 +116,12 @@ def _extract_links(fields: Dict[str, Any], limit: int) -> List[Dict[str, Any]]:
 
 
 def _sse(event: str, data: Dict[str, Any] | str) -> str:
+    """Format a Server-Sent Events (SSE) line for an event.
+
+    The function returns a string compliant with EventSource ("event: ..\n"
+    "data: ..\n\n"). JSON payloads are encoded with ensure_ascii=False to
+    preserve UTF-8 characters.
+    """
     payload = data if isinstance(data, str) else json.dumps(data, ensure_ascii=False)
     return f"event: {event}\ndata: {payload}\n\n"
 
