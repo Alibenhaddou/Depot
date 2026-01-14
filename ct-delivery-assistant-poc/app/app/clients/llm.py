@@ -12,6 +12,14 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _log_http_status(e: httpx.HTTPStatusError) -> None:
+    """Helper to log HTTPStatusError in a compact way."""
+    status = e.response.status_code
+    req_url = e.request.url
+    snippet = (e.response.text or "")[:300]
+    logger.warning("[LLM] HTTP %s on %s: %s", status, req_url, snippet)
+
+
 class LLMClient:
     def __init__(self) -> None:
         provider = (settings.llm_provider or "").strip().lower()
@@ -29,7 +37,11 @@ class LLMClient:
             self._client = httpx.AsyncClient(timeout=self.timeout)
             self._provider = "ollama"
 
-            logger.debug("[LLM] provider=ollama model=%s api_base=%s", self.model, self.api_base)
+            logger.debug(
+                "[LLM] provider=ollama model=%s api_base=%s",
+                self.model,
+                self.api_base,
+            )
 
         elif provider == "openai":
             if not settings.openai_api_key:
@@ -40,7 +52,11 @@ class LLMClient:
             self._client = httpx.AsyncClient(timeout=self.timeout, headers=headers)
             self._provider = "openai"
 
-            logger.debug("[LLM] provider=openai model=%s api_base=%s", self.model, self.base_url)
+            logger.debug(
+                "[LLM] provider=openai model=%s api_base=%s",
+                self.model,
+                self.base_url,
+            )
 
         else:
             raise RuntimeError(f"LLM_PROVIDER non supporté: {settings.llm_provider}")
@@ -48,7 +64,7 @@ class LLMClient:
     async def aclose(self) -> None:
         await self._client.aclose()
 
-    async def chat_json(self, *, system: str, user: str) -> Dict[str, Any]:
+    async def chat_json(self, *, system: str, user: str) -> Any:
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -61,7 +77,11 @@ class LLMClient:
                 "stream": False,
                 "format": "json",
                 "messages": messages,
-                "options": {"temperature": 0.2, "num_predict": 256, "num_ctx": 2048},
+                "options": {
+                    "temperature": 0.2,
+                    "num_predict": 256,
+                    "num_ctx": 2048,
+                },
             }
 
             logger.debug("[LLM] POST %s", url)
@@ -71,11 +91,17 @@ class LLMClient:
                 r.raise_for_status()
                 data = r.json()
             except httpx.HTTPStatusError as e:
-                logger.warning("[LLM] HTTP %s on %s: %s", e.response.status_code, e.request.url, (e.response.text or "")[:300])
-                raise HTTPException(status_code=502, detail="LLM error (HTTP)")
+                _log_http_status(e)
+                raise HTTPException(
+                    status_code=502,
+                    detail="LLM error (HTTP)",
+                )
             except httpx.RequestError as e:
                 logger.warning("[LLM] unreachable %s: %s", url, e)
-                raise HTTPException(status_code=502, detail="LLM unreachable")
+                raise HTTPException(
+                    status_code=502,
+                    detail="LLM unreachable",
+                )
 
             content = (data.get("message") or {}).get("content") or ""
             try:
@@ -100,7 +126,7 @@ class LLMClient:
                 r.raise_for_status()
                 data = r.json()
             except httpx.HTTPStatusError as e:
-                logger.warning("[LLM] HTTP %s on %s: %s", e.response.status_code, e.request.url, (e.response.text or "")[:300])
+                _log_http_status(e)
                 raise HTTPException(status_code=502, detail="LLM error (HTTP)")
             except httpx.RequestError as e:
                 logger.warning("[LLM] unreachable %s: %s", url, e)
@@ -109,14 +135,19 @@ class LLMClient:
             # OpenAI returns choices -> message -> content
             choices = data.get("choices") or []
             if not choices:
-                raise HTTPException(status_code=502, detail="LLM returned empty response")
-
+                raise HTTPException(
+                    status_code=502,
+                    detail="LLM returned empty response",
+                )
             content = (choices[0].get("message") or {}).get("content") or ""
             try:
                 return json.loads(content)
             except Exception:
                 logger.warning("[LLM] invalid JSON returned (len=%d)", len(content))
-                raise HTTPException(status_code=502, detail="LLM returned invalid JSON")
+                raise HTTPException(
+                    status_code=502,
+                    detail="LLM returned invalid JSON",
+                )
 
     async def chat_text(self, *, system: str, user: str) -> str:
         messages = [
@@ -130,7 +161,11 @@ class LLMClient:
                 "model": self.model,
                 "stream": False,
                 "messages": messages,
-                "options": {"temperature": 0.2, "num_predict": 256, "num_ctx": 2048},
+                "options": {
+                    "temperature": 0.2,
+                    "num_predict": 256,
+                    "num_ctx": 2048,
+                },
             }
 
             logger.debug("[LLM] POST %s", url)
@@ -140,15 +175,24 @@ class LLMClient:
                 r.raise_for_status()
                 data = r.json()
             except httpx.HTTPStatusError as e:
-                logger.warning("[LLM] HTTP %s on %s: %s", e.response.status_code, e.request.url, (e.response.text or "")[:300])
-                raise HTTPException(status_code=502, detail="LLM error (HTTP)")
+                _log_http_status(e)
+                raise HTTPException(
+                    status_code=502,
+                    detail="LLM error (HTTP)",
+                )
             except httpx.RequestError as e:
                 logger.warning("[LLM] unreachable %s: %s", url, e)
-                raise HTTPException(status_code=502, detail="LLM unreachable")
+                raise HTTPException(
+                    status_code=502,
+                    detail="LLM unreachable",
+                )
 
             content = (data.get("message") or {}).get("content") or ""
             if not content:
-                raise HTTPException(status_code=502, detail="LLM returned empty response")
+                raise HTTPException(
+                    status_code=502,
+                    detail="LLM returned empty response",
+                )
             return content
 
         else:  # openai
@@ -167,7 +211,7 @@ class LLMClient:
                 r.raise_for_status()
                 data = r.json()
             except httpx.HTTPStatusError as e:
-                logger.warning("[LLM] HTTP %s on %s: %s", e.response.status_code, e.request.url, (e.response.text or "")[:300])
+                _log_http_status(e)
                 raise HTTPException(status_code=502, detail="LLM error (HTTP)")
             except httpx.RequestError as e:
                 logger.warning("[LLM] unreachable %s: %s", url, e)
@@ -175,8 +219,14 @@ class LLMClient:
 
             choices = data.get("choices") or []
             if not choices:
-                raise HTTPException(status_code=502, detail="LLM returned empty response")
+                raise HTTPException(
+                    status_code=502,
+                    detail="LLM returned empty response",
+                )
             content = (choices[0].get("message") or {}).get("content") or ""
             if not content:
-                raise HTTPException(status_code=502, detail="LLM returned empty response")
+                raise HTTPException(
+                    status_code=502,
+                    detail="LLM returned empty response",
+                )
             return content

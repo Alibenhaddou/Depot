@@ -24,8 +24,9 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="CT - Delivery Assistant (POC)", version="0.1.0")
+
     @app.get("/", include_in_schema=False)
-    async def root():
+    async def root() -> RedirectResponse:
         return RedirectResponse("/ui")
 
     app_dir = Path(__file__).resolve().parent

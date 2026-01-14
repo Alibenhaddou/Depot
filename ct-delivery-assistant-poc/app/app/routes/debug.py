@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Request
 
@@ -36,7 +37,7 @@ def _fingerprint(value: str) -> str:
 
 
 @router.get("/cookie")
-async def debug_cookie(request: Request):
+async def debug_cookie(request: Request) -> Dict[str, Any]:
     _require_enabled()
 
     raw = request.cookies.get("sid")
@@ -55,9 +56,8 @@ async def debug_cookie(request: Request):
     }
 
 
-
 @router.get("/session")
-async def debug_session(request: Request):
+async def debug_session(request: Request) -> Dict[str, Any]:
     _require_enabled()
 
     sid = get_sid(request)
@@ -79,7 +79,7 @@ async def debug_session(request: Request):
         safe_sites.append({
             "id": s.get("id"),
             "name": s.get("name"),
-            "url": s.get("url"),  # si tu veux être plus strict, on peut tronquer au hostname
+            "url": s.get("url"),  # keep URL but avoid leaking full object
         })
 
     return {
@@ -95,7 +95,7 @@ async def debug_session(request: Request):
 
 
 @router.get("/routes")
-async def debug_routes():
+async def debug_routes() -> Dict[str, str]:
     _require_enabled()
 
     return {

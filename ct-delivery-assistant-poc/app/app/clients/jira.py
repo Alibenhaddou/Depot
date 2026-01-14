@@ -1,6 +1,6 @@
 from __future__ import annotations
 from fastapi import HTTPException, Request
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 import httpx
 
@@ -16,7 +16,10 @@ class JiraClient:
 
     @property
     def _headers(self) -> Dict[str, str]:
-        return {"Authorization": f"Bearer {self.access_token}", "Accept": "application/json"}
+        return {
+            "Authorization": f"Bearer {self.access_token}",
+            "Accept": "application/json",
+        }
 
     @property
     def _ex_base_url(self) -> str:
@@ -44,7 +47,8 @@ class JiraClient:
             raise PermissionError("Token Jira refusé ou expiré")
 
         if r.status_code >= 400:
-            snippet = (r.text or "")[:300].replace("\n", " ")
+            snippet = (r.text or "")[:300]
+            snippet = snippet.replace("\n", " ")
             raise httpx.HTTPStatusError(
                 message=f"Jira error {r.status_code}: {snippet}",
                 request=r.request,
@@ -53,13 +57,26 @@ class JiraClient:
 
         return r.json()
 
-    async def get_issue(self, issue_key: str, *, expand: Optional[str] = None) -> Dict[str, Any]:
+    async def get_issue(
+        self,
+        issue_key: str,
+        *,
+        expand: Optional[str] = None,
+    ) -> Any:
         params: Optional[Dict[str, Any]] = None
         if expand:
             params = {"expand": expand}
-        return await self._request("GET", f"/issue/{issue_key}", params=params)
+        return await self._request(
+            "GET",
+            f"/issue/{issue_key}",
+            params=params,
+        )
 
-    async def get_issue_comments(self, issue_key: str, max_results: int = 20) -> Dict[str, Any]:
+    async def get_issue_comments(
+        self,
+        issue_key: str,
+        max_results: int = 20,
+    ) -> Any:
         max_results = max(1, min(max_results, 50))
         return await self._request(
             "GET",
@@ -67,12 +84,25 @@ class JiraClient:
             params={"maxResults": max_results},
         )
 
-    async def search_jql(self, jql: str, max_results: int = 20, next_page_token: str | None = None) -> Dict[str, Any]:
+    async def search_jql(
+        self,
+        jql: str,
+        max_results: int = 20,
+        next_page_token: Optional[str] = None,
+    ) -> Any:
         max_results = max(1, min(max_results, 50))
         body: Dict[str, Any] = {
             "jql": jql,
             "maxResults": max_results,
-            "fields": ["summary", "status", "issuetype", "project", "assignee", "updated", "created"],
+            "fields": [
+                "summary",
+                "status",
+                "issuetype",
+                "project",
+                "assignee",
+                "updated",
+                "created",
+            ],
             "fieldsByKeys": True,
         }
         if next_page_token:
@@ -84,7 +114,10 @@ class JiraClient:
                 return await self._request("POST", "/search", json_body=body)
             raise
 
-def select_cloud_id(session: dict, request: Request) -> str:
+
+from typing import Dict
+
+def select_cloud_id(session: Dict[str, Any], request: Request) -> str:
     """
     Détermine quelle instance Jira utiliser pour la requête courante.
 
@@ -97,15 +130,15 @@ def select_cloud_id(session: dict, request: Request) -> str:
     - si cloud_ids est vide mais tokens_by_cloud existe, on dérive cloud_ids
     """
     tbc = session.get("tokens_by_cloud") or {}
-    cloud_ids = session.get("cloud_ids") or list(tbc.keys())
+    cloud_ids: list[str] = cast(list[str], session.get("cloud_ids") or list(tbc.keys()))
 
-    requested = request.query_params.get("cloud_id")
+    requested: Optional[str] = cast(Optional[str], request.query_params.get("cloud_id"))
     if requested:
         if requested not in cloud_ids:
             raise HTTPException(400, "cloud_id inconnu ou non connecté")
         return requested
 
-    active = session.get("active_cloud_id")
+    active: Optional[str] = cast(Optional[str], session.get("active_cloud_id"))
     if active and active in cloud_ids:
         return active
 

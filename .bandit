@@ -1,0 +1,3 @@
+exclude:
+  - "ct-delivery-assistant-poc/tests"
+  - "ct-delivery-assistant-poc/tests/*"
