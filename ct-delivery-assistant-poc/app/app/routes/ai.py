@@ -19,13 +19,13 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 llm = LLMClient()
 
 
-class SummarizeJqlBody(BaseModel):  # type: ignore[misc]
+class SummarizeJqlBody(BaseModel):
     jql: str = Field(min_length=1, max_length=2000)
     max_results: int = Field(default=20, ge=1, le=50)
     cloud_id: Optional[str] = None
 
 
-class AnalyzeIssueBody(BaseModel):  # type: ignore[misc]
+class AnalyzeIssueBody(BaseModel):
     issue_key: str = Field(min_length=1, max_length=50)
     cloud_id: Optional[str] = None
     max_links: int = Field(default=2, ge=1, le=12)

@@ -1,9 +1,9 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
-from typing import Any
+from typing import Any, Literal
 
 
-class Settings(BaseSettings):  # type: ignore[misc]
+class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     atlassian_client_id: str
@@ -16,7 +16,7 @@ class Settings(BaseSettings):  # type: ignore[misc]
     # Sessions / cookies
     session_max_age_seconds: int = 60 * 60 * 8  # 8h
     cookie_secure: bool = False  # True en prod (HTTPS)
-    cookie_samesite: str = "lax"  # "lax" ou "none"
+    cookie_samesite: Literal["lax", "strict", "none"] = "lax"  # "lax" ou "none"
 
     openai_api_key: str | None = None
     openai_model: str = "gpt-4.1-mini"
@@ -48,4 +48,4 @@ class Settings(BaseSettings):  # type: ignore[misc]
         return v
 
 
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]

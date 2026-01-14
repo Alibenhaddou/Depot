@@ -1,8 +1,4 @@
-import os
-import types
-
 from fastapi.testclient import TestClient
-from fastapi.responses import Response
 
 from app.main import create_app
 

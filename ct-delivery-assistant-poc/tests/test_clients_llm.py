@@ -1,7 +1,5 @@
 import json
-import types
-
-import pytest
+import asyncio
 
 from app.clients.llm import LLMClient
 from app.core import config
@@ -38,9 +36,6 @@ class FakeAsyncClient:
 
     async def aclose(self):
         return None
-
-
-import asyncio
 
 
 def test_chat_json_openai(monkeypatch):

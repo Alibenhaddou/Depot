@@ -1,7 +1,5 @@
 import asyncio
-import types
 
-import httpx
 import pytest
 
 from fastapi import HTTPException

@@ -1,7 +1,4 @@
-import types
-
 from fastapi.testclient import TestClient
-from fastapi import HTTPException
 
 from app.main import create_app
 from app.routes import ai as ai_mod
@@ -68,7 +65,7 @@ def test_analyze_issue_no_entry(monkeypatch):
     assert r.status_code == 401
 
 
-def test_analyze_issue_no_entry(monkeypatch):
+def test_analyze_issue_select_cloud_id_no_entry(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
     monkeypatch.setattr("app.routes.ai.get_session", lambda sid: {})
 

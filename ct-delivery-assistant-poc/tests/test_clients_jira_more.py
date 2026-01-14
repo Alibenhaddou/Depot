@@ -1,7 +1,6 @@
 import asyncio
 import types
 
-import httpx
 import pytest
 
 from app.clients.jira import JiraClient

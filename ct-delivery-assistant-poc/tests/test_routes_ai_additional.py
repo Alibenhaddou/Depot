@@ -1,5 +1,5 @@
 import asyncio
-import types
+import httpx
 
 import pytest
 from fastapi.testclient import TestClient
@@ -7,8 +7,6 @@ from fastapi import HTTPException
 
 from app.main import create_app
 from app.routes import ai as ai_mod
-from app.clients.jira import JiraClient
-from app.core.config import settings
 
 app = create_app()
 client = TestClient(app)
@@ -41,7 +39,7 @@ def test_extract_links_and_simplify():
         ]
     }
     links = ai_mod._extract_links(fields, limit=2)
-    assert any(l.get("key") for l in links)
+    assert any(link.get("key") for link in links)
 
     issues_data = {"issues": [{"key": "P-1", "fields": {"summary": "s"}}]}
     simp = ai_mod._simplify_issues(issues_data, limit=10)
@@ -122,7 +120,8 @@ def test_analyze_issue_stream_jira_404(monkeypatch):
             ]
         )
         assert "event: error" in text
-        # depending on how the exception is raised, the stream may contain a 404 or fall back to a 502 message
+        # depending on how the exception is raised,
+    # the stream may contain a 404 or a 502 message
         assert ("404" in text) or ("Erreur lors de l'appel Jira" in text)
 
 
@@ -257,7 +256,8 @@ def test_analyze_issue_skips_empty_comments_and_parses_links(monkeypatch):
     r = client.post("/ai/analyze-issue", json={"issue_key": "P-1"})
     assert r.status_code == 200
 
-    # verify that the constructed 'user' payload contains an empty comments list and the dependency key
+    # verify the constructed 'user' payload contains an empty comments list
+    # and the dependency key
     assert "'comments': []" in captured.get("user", "")
     assert "A" in captured.get("user", "")
 
@@ -352,7 +352,8 @@ def test_analyze_issue_stream_skips_keyless_links_via_monkeypatch(monkeypatch):
             return {"comments": []}
 
     monkeypatch.setattr("app.routes.ai.JiraClient", FakeClient)
-    # make _extract_links return a link without a key to hit the 'if not key: continue' guard
+    # make _extract_links return a link without a key
+    # to hit the 'if not key: continue' guard
     monkeypatch.setattr(
         ai_mod, "_extract_links", lambda fields, limit: [{"type": "rel"}]
     )

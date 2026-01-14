@@ -128,9 +128,6 @@ class JiraClient:
             raise
 
 
-from typing import Dict
-
-
 def select_cloud_id(session: Dict[str, Any], request: Request) -> str:
     """
     Détermine quelle instance Jira utiliser pour la requête courante.
@@ -144,9 +141,9 @@ def select_cloud_id(session: Dict[str, Any], request: Request) -> str:
     - si cloud_ids est vide mais tokens_by_cloud existe, on dérive cloud_ids
     """
     tbc = session.get("tokens_by_cloud") or {}
-    cloud_ids: list[str] = cast(list[str], session.get("cloud_ids") or list(tbc.keys()))
+    cloud_ids: list[str] = session.get("cloud_ids") or list(tbc.keys())
 
-    requested: Optional[str] = cast(Optional[str], request.query_params.get("cloud_id"))
+    requested: Optional[str] = request.query_params.get("cloud_id")
     if requested:
         if requested not in cloud_ids:
             raise HTTPException(400, "cloud_id inconnu ou non connecté")

@@ -18,7 +18,7 @@ _HTML_PATH = _UI_DIR / "auth.html"
 _HTML = _HTML_PATH.read_text(encoding="utf-8")  # cache en mémoire
 
 
-class AuthState(BaseModel):  # type: ignore[misc]
+class AuthState(BaseModel):
     logged_in: bool
     login_url: str = "/login"
     logout_url: str = "/logout"

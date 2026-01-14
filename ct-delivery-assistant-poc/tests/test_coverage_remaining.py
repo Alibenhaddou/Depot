@@ -3,7 +3,6 @@ import types
 import asyncio
 
 import pytest
-from pydantic import ValidationError
 
 from app.clients.llm import LLMClient
 from app.core.config import Settings

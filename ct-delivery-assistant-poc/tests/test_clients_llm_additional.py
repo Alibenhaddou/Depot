@@ -1,9 +1,8 @@
 import asyncio
-import json
 import types
+import pytest
 
 import httpx
-import pytest
 
 from fastapi import HTTPException
 

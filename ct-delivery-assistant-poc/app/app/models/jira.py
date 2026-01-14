@@ -2,7 +2,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 
 
-class JiraIssueOut(BaseModel):  # type: ignore[misc]
+class JiraIssueOut(BaseModel):
     key: str
     summary: Optional[str] = None
     status: Optional[str] = None
@@ -12,7 +12,7 @@ class JiraIssueOut(BaseModel):  # type: ignore[misc]
     updated: Optional[str] = None
 
 
-class JiraSearchResponse(BaseModel):  # type: ignore[misc]
+class JiraSearchResponse(BaseModel):
     total: int
     startAt: int
     maxResults: int

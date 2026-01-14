@@ -1,9 +1,4 @@
-import os
-from types import SimpleNamespace
-
-import pytest
 from fastapi.testclient import TestClient
-from fastapi import HTTPException
 
 from app.main import create_app
 from app.routes import debug as dbg

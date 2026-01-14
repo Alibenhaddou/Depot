@@ -1,7 +1,6 @@
 import asyncio
 import types
 
-import httpx
 import pytest
 
 from app.clients.llm import LLMClient
@@ -35,7 +34,7 @@ def test_openai_chat_json_missing_message_content(monkeypatch):
 
     c = LLMClient()
 
-    async def fake_post(url, json=None):
+    async def fake_post(url, json_body=None):
         # choices exists but message missing content
         return types.SimpleNamespace(
             status_code=200,

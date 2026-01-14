@@ -1,7 +1,6 @@
 import json
 import types
 
-import pytest
 
 from app.core import redis as core_redis
 from app.core import config

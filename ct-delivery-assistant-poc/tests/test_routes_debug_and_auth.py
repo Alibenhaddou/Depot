@@ -1,10 +1,10 @@
 import asyncio
 import types
 
-import httpx
 import pytest
 
 from fastapi.testclient import TestClient
+from fastapi import HTTPException
 
 from app.main import create_app
 
@@ -104,9 +104,6 @@ class _FakeAsyncClient:
 
     async def post(self, url, json=None, headers=None):
         return types.SimpleNamespace(status_code=self._status, json=lambda: self._json)
-
-
-from fastapi import HTTPException
 
 
 def test_get_accessible_resources_success_and_error(monkeypatch):

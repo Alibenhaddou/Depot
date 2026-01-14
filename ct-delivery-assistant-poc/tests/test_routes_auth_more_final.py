@@ -1,6 +1,5 @@
 from types import SimpleNamespace
 
-import pytest
 
 from app.routes import auth as auth_mod
 from app.core.config import settings

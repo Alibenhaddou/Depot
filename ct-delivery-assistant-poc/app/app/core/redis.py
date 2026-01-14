@@ -30,7 +30,7 @@ def get_session(sid: str) -> Optional[Dict[str, Any]]:
     if not raw:
         return None
     try:
-        session = cast(Dict[str, Any], json.loads(raw))
+        session = cast(Dict[str, Any], json.loads(cast(str, raw)))
     except Exception:
         return None
 

@@ -1,5 +1,4 @@
 import httpx
-import types
 
 import pytest
 

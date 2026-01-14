@@ -1,4 +1,4 @@
-import types
+import asyncio
 
 from app.routes import ai as ai_mod
 
@@ -19,7 +19,7 @@ def test_extract_links_inward_and_filter():
         ]
     }
     links = ai_mod._extract_links(fields, limit=5)
-    assert any(l.get("key") == "I" for l in links)
+    assert any(link.get("key") == "I" for link in links)
 
 
 def test_sse_with_string_payload():
@@ -34,7 +34,6 @@ def test__llm_step_generic_exception(monkeypatch):
 
     try:
         # call through and expect HTTPException
-        import asyncio
 
         asyncio.run(ai_mod._llm_step(FakeLLM(), title="T", system="s", user="u"))
         assert False, "expected"

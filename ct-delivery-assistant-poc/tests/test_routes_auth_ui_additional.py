@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-from starlette.responses import Response
 
 from app.main import create_app
 

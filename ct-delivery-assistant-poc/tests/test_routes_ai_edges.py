@@ -1,7 +1,4 @@
-import asyncio
 import types
-
-import httpx
 from fastapi.testclient import TestClient
 
 from app.main import create_app

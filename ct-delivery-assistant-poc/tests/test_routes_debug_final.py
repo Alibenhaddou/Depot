@@ -1,5 +1,3 @@
-import os
-
 from app.routes import debug as dbg
 
 
