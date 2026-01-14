@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import secrets
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List, cast
 from urllib.parse import urlencode
 
 import httpx
@@ -38,16 +38,16 @@ def _redirect_uri(request: Request) -> str:
     return str(request.url_for("oauth_callback"))
 
 
-async def _get_accessible_resources(access_token: str) -> list[dict]:
+async def _get_accessible_resources(access_token: str) -> Any:
     headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.get(ACCESSIBLE_RESOURCES_URL, headers=headers)
     if r.status_code >= 400:
         raise HTTPException(502, "Erreur accessible-resources")
-    return r.json()
+    return cast(Any, r.json())
 
 
-def _pick_jira_resources(resources: list[dict]) -> list[dict]:
+def _pick_jira_resources(resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     jira = []
     for res in resources:
         scopes = res.get("scopes", []) or []
@@ -62,13 +62,13 @@ def _expected_state_from_cookie(request: Request) -> Optional[str]:
     if not raw:
         return None
     try:
-        return state_serializer.loads(raw)
+        return cast(Optional[str], state_serializer.loads(raw))
     except BadSignature:
         return None
 
 
 @router.get("/login")
-async def login(request: Request):
+async def login(request: Request) -> RedirectResponse:
     state = secrets.token_urlsafe(16)
 
     params = {
@@ -108,7 +108,7 @@ async def oauth_callback(
     response: Response,
     code: Optional[str] = None,
     state: Optional[str] = None,
-):
+) -> RedirectResponse:
     sid = ensure_session(request, response)
     session: Dict[str, Any] = get_session(sid) or {}
 
@@ -128,7 +128,11 @@ async def oauth_callback(
     }
 
     async with httpx.AsyncClient(timeout=30) as client:
-        r = await client.post(TOKEN_URL, json=payload, headers={"Accept": "application/json"})
+        r = await client.post(
+            TOKEN_URL,
+            json=payload,
+            headers={"Accept": "application/json"},
+        )
 
     if r.status_code >= 400:
         raise HTTPException(502, "Erreur token Atlassian")
@@ -157,7 +161,12 @@ async def oauth_callback(
     session["tokens_by_cloud"] = tokens_by_cloud
     session["cloud_ids"] = list(tokens_by_cloud.keys())
     session["jira_sites"] = [
-        {"id": cid, "name": entry.get("name"), "url": entry.get("site_url"), "scopes": entry.get("scopes", [])}
+        {
+            "id": cid,
+            "name": entry.get("name"),
+            "url": entry.get("site_url"),
+            "scopes": entry.get("scopes", []) or [],
+        }
         for cid, entry in tokens_by_cloud.items()
     ]
 
@@ -183,7 +192,7 @@ async def oauth_callback(
 
 
 @router.get("/logout")
-async def logout(request: Request):
+async def logout(request: Request) -> RedirectResponse:
     resp = RedirectResponse(POST_LOGOUT_REDIRECT)
     destroy_session(request, resp)
     resp.delete_cookie("oauth_state", path="/")

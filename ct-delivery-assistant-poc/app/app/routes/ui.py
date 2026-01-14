@@ -16,7 +16,7 @@ _UI_DIR = _APP_DIR / "ui" / "poc"
 _HTML = (_UI_DIR / "poc.html").read_text(encoding="utf-8")
 
 
-class UiState(BaseModel):
+class UiState(BaseModel):  # type: ignore[misc]
     logged_in: bool
     login_url: str = "/login"
     logout_url: str = "/logout"

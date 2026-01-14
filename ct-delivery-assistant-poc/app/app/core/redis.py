@@ -1,6 +1,7 @@
 import json
 import os
 import redis
+from typing import Any, Dict, Optional, cast
 
 from app.core.config import settings
 
@@ -18,13 +19,13 @@ def _key(sid: str) -> str:
     return f"session:{sid}"
 
 
-def get_session(sid: str):
+def get_session(sid: str) -> Optional[Dict[str, Any]]:
     key = _key(sid)
     raw = redis_client.get(key)
     if not raw:
         return None
     try:
-        session = json.loads(raw)
+        session = cast(Dict[str, Any], json.loads(raw))
     except Exception:
         return None
 
@@ -33,8 +34,7 @@ def get_session(sid: str):
     return session
 
 
-
-def set_session(sid: str, session: dict):
+def set_session(sid: str, session: Dict[str, Any]) -> None:
     redis_client.set(
         _key(sid),
         json.dumps(session),
@@ -42,5 +42,5 @@ def set_session(sid: str, session: dict):
     )
 
 
-def delete_session(sid: str):
+def delete_session(sid: str) -> None:
     redis_client.delete(_key(sid))

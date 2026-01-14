@@ -1,8 +1,9 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
+from typing import Any
 
 
-class Settings(BaseSettings):
+class Settings(BaseSettings):  # type: ignore[misc]
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     atlassian_client_id: str
@@ -39,7 +40,7 @@ class Settings(BaseSettings):
 
     @field_validator("cookie_secure")
     @classmethod
-    def _validate_cookie_secure(cls, v: bool, info):
+    def _validate_cookie_secure(cls, v: bool, info: Any) -> bool:
         # Si SameSite=None => Secure doit être True (exigence navigateur)
         samesite = (info.data.get("cookie_samesite") or "").strip().lower()
         if samesite == "none" and v is not True:

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import secrets
 import time
-from typing import Optional
+from typing import Optional, cast
 
 from fastapi import HTTPException, Request, Response
 from itsdangerous import BadSignature, URLSafeSerializer
@@ -37,7 +37,7 @@ def get_sid(request: Request) -> Optional[str]:
     if not raw:
         return None
     try:
-        return _sid_serializer.loads(raw)
+        return cast(Optional[str], _sid_serializer.loads(raw))
     except BadSignature:
         return None
 

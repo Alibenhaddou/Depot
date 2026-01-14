@@ -21,6 +21,7 @@ def _require_logged_in(session: Dict[str, Any]) -> None:
     if not tbc and "access_token" not in session:
         raise HTTPException(401, "Connecte-toi d'abord via Login Atlassian")
 
+
 def _map_issue(issue: Dict[str, Any]) -> Dict[str, Any]:
     fields = issue.get("fields", {}) or {}
     return {
@@ -76,14 +77,20 @@ def _jira_client_from_session(session: Dict[str, Any], request: Request) -> Jira
     tbc = session.get("tokens_by_cloud") or {}
     entry = tbc.get(cloud_id)
     if not entry:
-        raise HTTPException(401, "Instance Jira non connectée. Reconnecte-toi via /login.")
+        raise HTTPException(
+            401,
+            "Instance Jira non connectée. Reconnecte-toi via /login.",
+        )
 
     return JiraClient(access_token=entry["access_token"], cloud_id=cloud_id)
 
 
-
 @router.post("/select")
-async def jira_select(request: Request, response: Response, cloud_id: str) -> Dict[str, Any]:
+async def jira_select(
+    request: Request,
+    response: Response,
+    cloud_id: str,
+) -> Dict[str, Any]:
     sid = _ensure_sid(request, response)
     session = get_session(sid) or {}
 
@@ -93,11 +100,18 @@ async def jira_select(request: Request, response: Response, cloud_id: str) -> Di
 
     session["active_cloud_id"] = cloud_id
     set_session(sid, session)
-    return {"ok": True, "active_cloud_id": cloud_id}
+    return {
+        "ok": True,
+        "active_cloud_id": cloud_id,
+    }
 
 
 @router.get("/issue")
-async def jira_issue(request: Request, response: Response, issue_key: str) -> Dict[str, Any]:
+async def jira_issue(
+    request: Request,
+    response: Response,
+    issue_key: str,
+) -> Dict[str, Any]:
     sid = _ensure_sid(request, response)
     session = get_session(sid) or {}
 
@@ -110,7 +124,10 @@ async def jira_issue(request: Request, response: Response, issue_key: str) -> Di
     except httpx.HTTPStatusError as e:
         # propager le status Jira (souvent 400) avec un petit snippet
         snippet = (e.response.text or "")[:300].replace("\n", " ")
-        raise HTTPException(e.response.status_code, f"Jira error: {snippet}")
+        raise HTTPException(
+            e.response.status_code,
+            f"Jira error: {snippet}",
+        )
     except Exception:
         raise HTTPException(502, "Erreur lors de l'appel Jira (get_issue)")
 
@@ -134,13 +151,20 @@ async def jira_search(
     client = _jira_client_from_session(session, request)
 
     try:
-        data = await client.search_jql(jql=jql, max_results=max_results, next_page_token=next_page_token)
+        data = await client.search_jql(
+            jql=jql,
+            max_results=max_results,
+            next_page_token=next_page_token,
+        )
     except PermissionError:
         raise HTTPException(401, "Token expiré — reconnecte-toi via /login")
     except httpx.HTTPStatusError as e:
         # propager le status Jira (souvent 400) avec un petit snippet
         snippet = (e.response.text or "")[:300].replace("\n", " ")
-        raise HTTPException(e.response.status_code, f"Jira error: {snippet}")
+        raise HTTPException(
+            e.response.status_code,
+            f"Jira error: {snippet}",
+        )
     except Exception:
         raise HTTPException(502, "Erreur lors de l'appel Jira (search_jql)")
 
@@ -156,7 +180,9 @@ async def jira_instances(request: Request, response: Response) -> Dict[str, Any]
     safe_sites = []
     for s in sites:
         if isinstance(s, dict):
-            safe_sites.append({"id": s.get("id"), "name": s.get("name"), "url": s.get("url")})
+            safe_sites.append(
+                {"id": s.get("id"), "name": s.get("name"), "url": s.get("url")}
+            )
 
     return {
         "cloud_ids": session.get("cloud_ids") or [],
