@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest caches
+.pytest_cache/
+
+# Coverage
+ct-delivery-assistant-poc/.coverage
+ct-delivery-assistant-poc/htmlcov/
+
+# Logs
+uvicorn_server.log
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
