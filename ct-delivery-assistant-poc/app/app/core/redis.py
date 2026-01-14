@@ -55,7 +55,7 @@ def get_session(sid: str) -> Optional[Dict[str, Any]]:
         redis_client.expire(key, settings.session_max_age_seconds)
     except Exception:
         # if redis is down the in-memory store doesn't support TTLs
-        pass
+        logger.debug("Redis expire failed (ignored)", exc_info=True)
     return session
 
 
@@ -75,10 +75,3 @@ def delete_session(sid: str) -> None:
         redis_client.delete(_key(sid))
     except Exception:
         _local_store.pop(_key(sid), None)
-
-
-def delete_session(sid: str) -> None:
-    try:
-        redis_client.delete(_key(sid))
-    except Exception:
-        return

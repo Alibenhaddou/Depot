@@ -1,0 +1,6 @@
+[run]
+# FastAPI TestClient exécute l’app dans un thread; activer la collecte sur threads.
+concurrency = thread
+
+[report]
+show_missing = True
