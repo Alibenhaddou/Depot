@@ -15,8 +15,8 @@ class Settings(BaseSettings):  # type: ignore[misc]
 
     # Sessions / cookies
     session_max_age_seconds: int = 60 * 60 * 8  # 8h
-    cookie_secure: bool = False                 # True en prod (HTTPS)
-    cookie_samesite: str = "lax"                # "lax" ou "none"
+    cookie_secure: bool = False  # True en prod (HTTPS)
+    cookie_samesite: str = "lax"  # "lax" ou "none"
 
     openai_api_key: str | None = None
     openai_model: str = "gpt-4.1-mini"

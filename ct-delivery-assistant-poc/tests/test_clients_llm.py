@@ -30,14 +30,18 @@ class FakeAsyncClient:
         self._posted.append((url, json))
         # Return a response shaped like Ollama
         if "/api/chat" in url:
-            return FakeResponse({"message": {"content": json.get("messages") and "{\"ok\": true}"}})
+            return FakeResponse(
+                {"message": {"content": json.get("messages") and '{"ok": true}'}}
+            )
         # OpenAI style
         return FakeResponse({"choices": [{"message": {"content": '{"ok": true}'}}]})
 
     async def aclose(self):
         return None
 
+
 import asyncio
+
 
 def test_chat_json_openai(monkeypatch):
     # configure settings for openai
@@ -62,4 +66,4 @@ def test_chat_text_ollama(monkeypatch):
 
     client = LLMClient()
     text = asyncio.run(client.chat_text(system="s", user="u"))
-    assert "{\"ok\": true}" in text
+    assert '{"ok": true}' in text

@@ -12,7 +12,9 @@ def test_request_snippet_newlines(monkeypatch):
 
     class FakeClient:
         async def request(self, *a, **k):
-            return types.SimpleNamespace(status_code=500, text="line1\nline2", request=types.SimpleNamespace())
+            return types.SimpleNamespace(
+                status_code=500, text="line1\nline2", request=types.SimpleNamespace()
+            )
 
     jc._client = FakeClient()
 

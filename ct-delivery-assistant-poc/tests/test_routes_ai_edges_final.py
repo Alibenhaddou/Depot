@@ -12,7 +12,14 @@ client = TestClient(app)
 
 def test_summarize_jql_permission_error(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.ai.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t1"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.ai.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -30,7 +37,14 @@ def test_summarize_jql_permission_error(monkeypatch):
 
 def test_analyze_issue_http500_message(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.ai.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t1"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.ai.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -53,7 +67,14 @@ def test_analyze_issue_http500_message(monkeypatch):
 
 def test_analyze_issue_stream_404_and_empty_comment(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.ai.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t1"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.ai.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     # 404 case
     class Fake404:
@@ -70,8 +91,15 @@ def test_analyze_issue_stream_404_and_empty_comment(monkeypatch):
 
     monkeypatch.setattr("app.routes.ai.JiraClient", Fake404)
 
-    with client.stream("POST", "/ai/analyze-issue/stream", json={"issue_key": "P-1"}) as resp:
-        text = "\n".join([line.decode() if isinstance(line, bytes) else line for line in resp.iter_lines()])
+    with client.stream(
+        "POST", "/ai/analyze-issue/stream", json={"issue_key": "P-1"}
+    ) as resp:
+        text = "\n".join(
+            [
+                line.decode() if isinstance(line, bytes) else line
+                for line in resp.iter_lines()
+            ]
+        )
         assert "event: error" in text
         assert "Ticket introuvable" in text
 
@@ -84,7 +112,11 @@ def test_analyze_issue_stream_404_and_empty_comment(monkeypatch):
             return {"key": "P-1", "fields": {"summary": "s", "description": "d"}}
 
         async def get_issue_comments(self, *a, **k):
-            return {"comments": [{"author": {"displayName": "A"}, "created": "t", "body": {}}]}
+            return {
+                "comments": [
+                    {"author": {"displayName": "A"}, "created": "t", "body": {}}
+                ]
+            }
 
     monkeypatch.setattr("app.routes.ai.JiraClient", FakeClient2)
 
@@ -93,15 +125,29 @@ def test_analyze_issue_stream_404_and_empty_comment(monkeypatch):
 
     monkeypatch.setattr(ai_mod, "_llm_step", fake_llm_step)
 
-    with client.stream("POST", "/ai/analyze-issue/stream", json={"issue_key": "P-1"}) as resp:
-        text = "\n".join([line.decode() if isinstance(line, bytes) else line for line in resp.iter_lines()])
+    with client.stream(
+        "POST", "/ai/analyze-issue/stream", json={"issue_key": "P-1"}
+    ) as resp:
+        text = "\n".join(
+            [
+                line.decode() if isinstance(line, bytes) else line
+                for line in resp.iter_lines()
+            ]
+        )
         # ensure it reaches result despite empty comment
         assert "event: result" in text
 
 
 def test_stream_llm_http_exception_propagates(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.ai.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t1"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.ai.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -120,7 +166,14 @@ def test_stream_llm_http_exception_propagates(monkeypatch):
 
     monkeypatch.setattr(ai_mod, "_llm_step", fake_llm_step)
 
-    with client.stream("POST", "/ai/analyze-issue/stream", json={"issue_key": "P-1"}) as resp:
-        text = "\n".join([line.decode() if isinstance(line, bytes) else line for line in resp.iter_lines()])
+    with client.stream(
+        "POST", "/ai/analyze-issue/stream", json={"issue_key": "P-1"}
+    ) as resp:
+        text = "\n".join(
+            [
+                line.decode() if isinstance(line, bytes) else line
+                for line in resp.iter_lines()
+            ]
+        )
         assert "event: error" in text
         assert "LLM failed" in text

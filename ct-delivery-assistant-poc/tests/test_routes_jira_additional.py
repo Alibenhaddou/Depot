@@ -1,8 +1,4 @@
-import asyncio
-import types
-
 import httpx
-import pytest
 
 from fastapi.testclient import TestClient
 
@@ -14,7 +10,20 @@ client = TestClient(app)
 
 def test_jira_issue_http_status_error(monkeypatch):
     monkeypatch.setattr("app.routes.jira._ensure_sid", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.jira.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+
+    def fake_session():
+        return {
+            "tokens_by_cloud": {
+                "c1": {"access_token": "t"},
+            },
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        }
+
+    monkeypatch.setattr(
+        "app.routes.jira.get_session",
+        lambda sid: fake_session(),
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -29,12 +38,26 @@ def test_jira_issue_http_status_error(monkeypatch):
 
     r = client.get("/jira/issue", params={"issue_key": "P-1"})
     assert r.status_code == 400
-    assert "Jira error" in r.text
+    # Error should propagate Jira status and include snippet in detail
+    assert r.json().get("detail", "").startswith("Jira error")
 
 
 def test_jira_search_permission_error(monkeypatch):
     monkeypatch.setattr("app.routes.jira._ensure_sid", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.jira.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+
+    def fake_session():
+        return {
+            "tokens_by_cloud": {
+                "c1": {"access_token": "t"},
+            },
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        }
+
+    monkeypatch.setattr(
+        "app.routes.jira.get_session",
+        lambda sid: fake_session(),
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -51,10 +74,29 @@ def test_jira_search_permission_error(monkeypatch):
 
 def test_jira_instances_filters_non_dict(monkeypatch):
     monkeypatch.setattr("app.routes.jira._ensure_sid", lambda req, resp: "sid")
-    session = {"cloud_ids": ["a"], "active_cloud_id": "a", "jira_sites": [{"id": "a", "name": "A", "url": "u"}, "bad"]}
+    session = {
+        "cloud_ids": ["a"],
+        "active_cloud_id": "a",
+        "jira_sites": [{"id": "a", "name": "A", "url": "u"}, "bad"],
+    }
     monkeypatch.setattr("app.routes.jira.get_session", lambda sid: session)
 
     r = client.get("/jira/instances")
     assert r.status_code == 200
     data = r.json()
     assert data["jira_sites"][0]["id"] == "a"
+
+
+def test_jira_instances_missing_and_bad_entries(monkeypatch):
+    monkeypatch.setattr("app.routes.jira._ensure_sid", lambda req, resp: "sid")
+    # session with no jira_sites and empty cloud_ids
+    monkeypatch.setattr(
+        "app.routes.jira.get_session",
+        lambda sid: {"cloud_ids": [], "active_cloud_id": None},
+    )
+
+    r = client.get("/jira/instances")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["jira_sites"] == []
+    assert data["cloud_ids"] == []

@@ -81,11 +81,13 @@ async def debug_session(request: Request) -> Dict[str, Any]:
     for s in jira_sites:
         if not isinstance(s, dict):
             continue
-        safe_sites.append({
-            "id": s.get("id"),
-            "name": s.get("name"),
-            "url": s.get("url"),  # keep URL but avoid leaking full object
-        })
+        safe_sites.append(
+            {
+                "id": s.get("id"),
+                "name": s.get("name"),
+                "url": s.get("url"),  # keep URL but avoid leaking full object
+            }
+        )
 
     return {
         "sid_fingerprint": _fingerprint(sid),

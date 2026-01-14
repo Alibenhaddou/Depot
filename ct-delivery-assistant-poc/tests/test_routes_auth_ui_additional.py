@@ -24,12 +24,12 @@ def test_auth_page_cookie_is_set_when_real_ensure(monkeypatch):
         called["sid"] = sid
 
     import app.auth.session_store as ss
+
     monkeypatch.setattr(ss, "set_session", fake_set_session)
     r = client.get("/auth")
     assert r.status_code == 200
     # cookie sid present in response headers
     assert any("sid=" in c for c in r.headers.get_list("set-cookie"))
-
 
 
 def test_auth_state_logged_in_and_logged_out(monkeypatch):
@@ -41,7 +41,9 @@ def test_auth_state_logged_in_and_logged_out(monkeypatch):
     assert r.json()["logged_in"] is False
 
     # logged in
-    monkeypatch.setattr("app.routes.auth_ui.get_session", lambda sid: {"access_token": "t"})
+    monkeypatch.setattr(
+        "app.routes.auth_ui.get_session", lambda sid: {"access_token": "t"}
+    )
     r2 = client.get("/auth/state")
     assert r2.status_code == 200
     assert r2.json()["logged_in"] is True

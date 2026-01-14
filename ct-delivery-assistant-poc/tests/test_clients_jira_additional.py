@@ -21,7 +21,9 @@ class DummyResp:
     def raise_for_status(self):
         if self.status_code >= 400:
             req = httpx.Request("POST", "http://test")
-            resp = httpx.Response(self.status_code, request=req, content=(self.text or "").encode())
+            resp = httpx.Response(
+                self.status_code, request=req, content=(self.text or "").encode()
+            )
             raise httpx.HTTPStatusError("err", request=req, response=resp)
 
 

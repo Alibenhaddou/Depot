@@ -35,7 +35,14 @@ def test_debug_cookie_and_session(monkeypatch):
     local_client.cookies.set("sid", "sval")
     local_client.cookies.set("oauth_state", "x")
     monkeypatch.setattr("app.routes.debug.get_sid", lambda req: "sid")
-    monkeypatch.setattr("app.routes.debug.get_session", lambda sid: {"access_token": "tok", "tokens_by_cloud": {"c": {}}, "jira_sites": [{"id": "a", "name": "A", "url": "u"}, "bad"]})
+    monkeypatch.setattr(
+        "app.routes.debug.get_session",
+        lambda sid: {
+            "access_token": "tok",
+            "tokens_by_cloud": {"c": {}},
+            "jira_sites": [{"id": "a", "name": "A", "url": "u"}, "bad"],
+        },
+    )
 
     r = local_client.get("/debug/cookie")
     assert r.status_code == 200
@@ -66,7 +73,13 @@ def test_debug_session_errors_and_sanitizes_sites(monkeypatch):
     assert r.status_code == 401
 
     # sid and session -> sanitized jira_sites
-    monkeypatch.setattr("app.routes.debug.get_session", lambda sid: {"tokens_by_cloud": {}, "jira_sites": [{"id": "x", "name": "X", "url": "u"}, "bad"]})
+    monkeypatch.setattr(
+        "app.routes.debug.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {},
+            "jira_sites": [{"id": "x", "name": "X", "url": "u"}, "bad"],
+        },
+    )
     r = local_client.get("/debug/session")
     assert r.status_code == 200
     data = r.json()
@@ -98,14 +111,28 @@ from fastapi import HTTPException
 
 def test_get_accessible_resources_success_and_error(monkeypatch):
     # success
-    monkeypatch.setattr("app.routes.auth.httpx.AsyncClient", lambda *a, **k: _FakeAsyncClient(status=200, json_data=[{"id": "a"}]))
-    res = asyncio.run(__import__("app.routes.auth", fromlist=["_get_accessible_resources"])._get_accessible_resources("t"))
+    monkeypatch.setattr(
+        "app.routes.auth.httpx.AsyncClient",
+        lambda *a, **k: _FakeAsyncClient(status=200, json_data=[{"id": "a"}]),
+    )
+    res = asyncio.run(
+        __import__(
+            "app.routes.auth", fromlist=["_get_accessible_resources"]
+        )._get_accessible_resources("t")
+    )
     assert isinstance(res, list)
 
     # error -> raises HTTPException (502)
-    monkeypatch.setattr("app.routes.auth.httpx.AsyncClient", lambda *a, **k: _FakeAsyncClient(status=500, json_data={}))
+    monkeypatch.setattr(
+        "app.routes.auth.httpx.AsyncClient",
+        lambda *a, **k: _FakeAsyncClient(status=500, json_data={}),
+    )
     with pytest.raises(HTTPException):
-        asyncio.run(__import__("app.routes.auth", fromlist=["_get_accessible_resources"])._get_accessible_resources("t"))
+        asyncio.run(
+            __import__(
+                "app.routes.auth", fromlist=["_get_accessible_resources"]
+            )._get_accessible_resources("t")
+        )
 
 
 def test_oauth_callback_no_jira_resources(monkeypatch):
@@ -114,16 +141,22 @@ def test_oauth_callback_no_jira_resources(monkeypatch):
     monkeypatch.setattr("app.routes.auth.get_session", lambda sid: {"state": "s"})
 
     # token endpoint returns access_token
-    monkeypatch.setattr("app.routes.auth.httpx.AsyncClient", lambda *a, **k: _FakeAsyncClient(status=200, json_data={"access_token": "t"}))
+    monkeypatch.setattr(
+        "app.routes.auth.httpx.AsyncClient",
+        lambda *a, **k: _FakeAsyncClient(status=200, json_data={"access_token": "t"}),
+    )
 
     # accessible resources returns none (no jira resources)
     import app.routes.auth as auth_mod
+
     async def fake_get_accessible(token):
         return []
+
     monkeypatch.setattr(auth_mod, "_get_accessible_resources", fake_get_accessible)
 
     # create a fresh app in case session handling is sensitive
     from app.main import create_app
+
     app = create_app()
     local_client = TestClient(app)
 

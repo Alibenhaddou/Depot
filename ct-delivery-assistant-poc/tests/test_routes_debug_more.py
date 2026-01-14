@@ -48,7 +48,13 @@ def test_debug_cookie_and_session(monkeypatch):
 
     # simulate a valid sid cookie and session in redis by patching get_sid/get_session
     monkeypatch.setattr("app.routes.debug.get_sid", lambda req: "s1")
-    monkeypatch.setattr("app.routes.debug.get_session", lambda sid: {"access_token": "t", "jira_sites": [{"id": "x", "name": "N", "url": "u"}]})
+    monkeypatch.setattr(
+        "app.routes.debug.get_session",
+        lambda sid: {
+            "access_token": "t",
+            "jira_sites": [{"id": "x", "name": "N", "url": "u"}],
+        },
+    )
 
     r2 = c.get("/debug/cookie", cookies={"sid": "v", "oauth_state": "o"})
     assert r2.json()["sid_cookie_present"] is True
@@ -62,7 +68,15 @@ def test_debug_cookie_and_session(monkeypatch):
 
     # patch get_sid and get_session to return partial session
     monkeypatch.setattr("app.routes.debug.get_sid", lambda req: "s1")
-    monkeypatch.setattr("app.routes.debug.get_session", lambda sid: {"tokens_by_cloud": {"c1": {}}, "cloud_ids": ["c1"], "active_cloud_id": "c1", "jira_sites": [{"id": "x", "name": "N", "url": "u"}]})
+    monkeypatch.setattr(
+        "app.routes.debug.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+            "jira_sites": [{"id": "x", "name": "N", "url": "u"}],
+        },
+    )
 
     r4 = c.get("/debug/session")
     assert r4.status_code == 200

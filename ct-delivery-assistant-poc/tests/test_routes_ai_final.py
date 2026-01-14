@@ -26,7 +26,14 @@ def test_extract_links_limit_and_missing_key():
 
 def test_analyze_issue_permission_error(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.ai.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t1"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.ai.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -43,7 +50,14 @@ def test_analyze_issue_permission_error(monkeypatch):
 
 def test_analyze_issue_http_error_500(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.ai.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t1"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.ai.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -65,14 +79,27 @@ def test_analyze_issue_http_error_500(monkeypatch):
 
 def test_analyze_issue_stream_final_synth_error(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.ai.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t1"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.ai.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
             pass
 
         async def get_issue(self, *a, **k):
-            return {"key": "P-1", "fields": {"summary": "s", "description": {"type": "text", "text": "d"}}}
+            return {
+                "key": "P-1",
+                "fields": {
+                    "summary": "s",
+                    "description": {"type": "text", "text": "d"},
+                },
+            }
 
         async def get_issue_comments(self, *a, **k):
             return {"comments": []}
@@ -87,7 +114,14 @@ def test_analyze_issue_stream_final_synth_error(monkeypatch):
 
     monkeypatch.setattr(ai_mod, "_llm_step", fake_llm_step)
 
-    with client.stream("POST", "/ai/analyze-issue/stream", json={"issue_key": "P-1"}) as resp:
-        text = "\n".join([line.decode() if isinstance(line, bytes) else line for line in resp.iter_lines()])
+    with client.stream(
+        "POST", "/ai/analyze-issue/stream", json={"issue_key": "P-1"}
+    ) as resp:
+        text = "\n".join(
+            [
+                line.decode() if isinstance(line, bytes) else line
+                for line in resp.iter_lines()
+            ]
+        )
         assert "event: error" in text
         assert "Synth error" in text

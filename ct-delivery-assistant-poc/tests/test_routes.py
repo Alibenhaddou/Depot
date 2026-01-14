@@ -32,13 +32,43 @@ class FakeJiraClient:
         return None
 
     async def get_issue(self, issue_key: str, *, expand=None):
-        return {"key": issue_key, "fields": {"summary": "S", "status": {"name": "Open"}, "issuetype": {"name": "Bug"}, "project": {"key": "P"}}}
+        return {
+            "key": issue_key,
+            "fields": {
+                "summary": "S",
+                "status": {"name": "Open"},
+                "issuetype": {"name": "Bug"},
+                "project": {"key": "P"},
+            },
+        }
 
     async def get_issue_comments(self, issue_key: str, max_results: int = 20):
-        return {"comments": [{"author": {"displayName": "A"}, "created": "t", "body": {"type": "doc", "content": [{"type": "text", "text": "c"}]}}]}
+        return {
+            "comments": [
+                {
+                    "author": {"displayName": "A"},
+                    "created": "t",
+                    "body": {"type": "doc", "content": [{"type": "text", "text": "c"}]},
+                }
+            ]
+        }
 
-    async def search_jql(self, jql: str, max_results: int = 20, next_page_token: str | None = None):
-        return {"issues": [{"key": "P-1", "fields": {"summary": "sum", "status": {"name": "Open"}, "issuetype": {"name": "Task"}, "project": {"key": "P"}}}]}
+    async def search_jql(
+        self, jql: str, max_results: int = 20, next_page_token: str | None = None
+    ):
+        return {
+            "issues": [
+                {
+                    "key": "P-1",
+                    "fields": {
+                        "summary": "sum",
+                        "status": {"name": "Open"},
+                        "issuetype": {"name": "Task"},
+                        "project": {"key": "P"},
+                    },
+                }
+            ]
+        }
 
 
 class FakeLLM:
@@ -53,6 +83,7 @@ class FakeLLM:
 
 
 # ------------------------- Auth routes ---------------------------------
+
 
 def test_login_sets_state_and_cookie(monkeypatch):
     # stub session helpers
@@ -109,7 +140,9 @@ def test_oauth_callback_success(monkeypatch):
 
     # stub accessible resources
     async def fake_accessible(token):
-        return [{"id": "c1", "url": "https://x", "scopes": ["read:jira-work"], "name": "C1"}]
+        return [
+            {"id": "c1", "url": "https://x", "scopes": ["read:jira-work"], "name": "C1"}
+        ]
 
     monkeypatch.setattr("app.routes.auth._get_accessible_resources", fake_accessible)
 
@@ -136,7 +169,9 @@ def test_oauth_callback_bad_state(monkeypatch):
 
 def test_logout_calls_destroy(monkeypatch):
     called = {"ok": False}
-    monkeypatch.setattr("app.routes.auth.destroy_session", lambda req, resp: called.update({"ok": True}))
+    monkeypatch.setattr(
+        "app.routes.auth.destroy_session", lambda req, resp: called.update({"ok": True})
+    )
 
     r = client.get("/logout", follow_redirects=False)
     assert r.status_code in (307, 302)
@@ -145,10 +180,15 @@ def test_logout_calls_destroy(monkeypatch):
 
 # ------------------------- Jira routes ---------------------------------
 
+
 def test_jira_select_and_instances(monkeypatch):
     # session with cloud ids
     monkeypatch.setattr("app.routes.jira._ensure_sid", lambda req, resp: "sid-js")
-    ses = {"cloud_ids": ["a", "b"], "active_cloud_id": "a", "jira_sites": [{"id": "a", "name": "A", "url": "u"}]}
+    ses = {
+        "cloud_ids": ["a", "b"],
+        "active_cloud_id": "a",
+        "jira_sites": [{"id": "a", "name": "A", "url": "u"}],
+    }
     monkeypatch.setattr("app.routes.jira.get_session", lambda sid: ses)
 
     cap = {}
@@ -171,7 +211,11 @@ def test_jira_select_and_instances(monkeypatch):
 def test_jira_issue_and_search(monkeypatch):
     # session with valid token
     monkeypatch.setattr("app.routes.jira._ensure_sid", lambda req, resp: "sid-j1")
-    ses = {"tokens_by_cloud": {"c1": {"access_token": "t1", "site_url": "u"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"}
+    ses = {
+        "tokens_by_cloud": {"c1": {"access_token": "t1", "site_url": "u"}},
+        "cloud_ids": ["c1"],
+        "active_cloud_id": "c1",
+    }
     monkeypatch.setattr("app.routes.jira.get_session", lambda sid: ses)
 
     # patch JiraClient to fake
@@ -193,9 +237,14 @@ def test_jira_issue_and_search(monkeypatch):
 
 # ------------------------- AI routes ---------------------------------
 
+
 def test_summarize_jql_success(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid-ai")
-    ses = {"tokens_by_cloud": {"c1": {"access_token": "t1"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"}
+    ses = {
+        "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+        "cloud_ids": ["c1"],
+        "active_cloud_id": "c1",
+    }
     monkeypatch.setattr("app.routes.ai.get_session", lambda sid: ses)
 
     monkeypatch.setattr("app.routes.ai.JiraClient", FakeJiraClient)
@@ -211,7 +260,11 @@ def test_summarize_jql_success(monkeypatch):
 
 def test_analyze_issue_and_stream(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid-ai2")
-    ses = {"tokens_by_cloud": {"c1": {"access_token": "t1"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"}
+    ses = {
+        "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+        "cloud_ids": ["c1"],
+        "active_cloud_id": "c1",
+    }
     monkeypatch.setattr("app.routes.ai.get_session", lambda sid: ses)
 
     monkeypatch.setattr("app.routes.ai.JiraClient", FakeJiraClient)
@@ -222,8 +275,15 @@ def test_analyze_issue_and_stream(monkeypatch):
     assert "result" in r.json()
 
     # streaming
-    with client.stream("POST", "/ai/analyze-issue/stream", json={"issue_key": "P-1"}) as resp:
+    with client.stream(
+        "POST", "/ai/analyze-issue/stream", json={"issue_key": "P-1"}
+    ) as resp:
         assert resp.status_code == 200
-        text = "\n".join([line.decode() if isinstance(line, bytes) else line for line in resp.iter_lines()])
+        text = "\n".join(
+            [
+                line.decode() if isinstance(line, bytes) else line
+                for line in resp.iter_lines()
+            ]
+        )
         assert "event: log" in text
         assert "event: result" in text

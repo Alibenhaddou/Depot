@@ -37,7 +37,11 @@ def test_openai_chat_json_missing_message_content(monkeypatch):
 
     async def fake_post(url, json=None):
         # choices exists but message missing content
-        return types.SimpleNamespace(status_code=200, json=lambda: {"choices": [{"message": {}}]}, raise_for_status=lambda: None)
+        return types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {"choices": [{"message": {}}]},
+            raise_for_status=lambda: None,
+        )
 
     c._client.post = fake_post
 
@@ -56,7 +60,11 @@ def test_openai_chat_text_content_empty(monkeypatch):
     c = LLMClient()
 
     async def fake_post(url, json=None):
-        return types.SimpleNamespace(status_code=200, json=lambda: {"choices": [{"message": {"content": ""}}]}, raise_for_status=lambda: None)
+        return types.SimpleNamespace(
+            status_code=200,
+            json=lambda: {"choices": [{"message": {"content": ""}}]},
+            raise_for_status=lambda: None,
+        )
 
     c._client.post = fake_post
 

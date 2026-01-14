@@ -23,6 +23,7 @@ def test_debug_cookie_and_session(monkeypatch):
 
     # recreate app so router inclusion reflects the env var
     from app.main import create_app
+
     app_local = create_app()
     local_client = TestClient(app_local)
 
@@ -34,7 +35,14 @@ def test_debug_cookie_and_session(monkeypatch):
 
     # with sid and session
     monkeypatch.setattr("app.routes.debug.get_sid", lambda req: "s1")
-    session = {"access_token": "t", "tokens_by_cloud": {"c1": {}}, "jira_sites": [{"id": "c1", "name": "C1", "url": "https://x"}], "cloud_ids": ["c1"], "active_cloud_id": "c1", "site_url": "u"}
+    session = {
+        "access_token": "t",
+        "tokens_by_cloud": {"c1": {}},
+        "jira_sites": [{"id": "c1", "name": "C1", "url": "https://x"}],
+        "cloud_ids": ["c1"],
+        "active_cloud_id": "c1",
+        "site_url": "u",
+    }
     monkeypatch.setattr("app.routes.debug.get_session", lambda sid: session)
 
     r2 = local_client.get("/debug/cookie")

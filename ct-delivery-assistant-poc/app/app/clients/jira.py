@@ -12,6 +12,7 @@ class JiraClient:
     around httpx.AsyncClient and normalizes HTTP error handling into
     application-level exceptions used by the routes.
     """
+
     def __init__(self, access_token: str, cloud_id: str, timeout: int = 30):
         self.access_token = access_token
         self.cloud_id = cloud_id
@@ -128,6 +129,7 @@ class JiraClient:
 
 
 from typing import Dict
+
 
 def select_cloud_id(session: Dict[str, Any], request: Request) -> str:
     """

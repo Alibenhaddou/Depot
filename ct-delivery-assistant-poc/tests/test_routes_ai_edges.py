@@ -12,7 +12,14 @@ client = TestClient(app)
 
 def test_analyze_issue_skips_empty_comment_and_builds_deps(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.ai.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t1"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.ai.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -23,14 +30,23 @@ def test_analyze_issue_skips_empty_comment_and_builds_deps(monkeypatch):
                 "key": "P-1",
                 "fields": {
                     "summary": "s",
-                    "description": {"type": "doc", "content": [{"type": "text", "text": "desc"}]},
-                    "issuelinks": [{"type": {"name": "rel"}, "outwardIssue": {"key": "A"}}],
+                    "description": {
+                        "type": "doc",
+                        "content": [{"type": "text", "text": "desc"}],
+                    },
+                    "issuelinks": [
+                        {"type": {"name": "rel"}, "outwardIssue": {"key": "A"}}
+                    ],
                 },
             }
 
         async def get_issue_comments(self, *a, **k):
             # comment body that yields empty text -> should be skipped
-            return {"comments": [{"author": {"displayName": "A"}, "created": "t", "body": {}}]}
+            return {
+                "comments": [
+                    {"author": {"displayName": "A"}, "created": "t", "body": {}}
+                ]
+            }
 
     monkeypatch.setattr("app.routes.ai.JiraClient", FakeClient)
 

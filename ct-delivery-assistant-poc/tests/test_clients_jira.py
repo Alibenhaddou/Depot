@@ -26,7 +26,9 @@ class FakeClient:
     def __init__(self):
         self.requests = []
 
-    async def request(self, method=None, url=None, headers=None, params=None, json=None):
+    async def request(
+        self, method=None, url=None, headers=None, params=None, json=None
+    ):
         self.requests.append((method, url, headers, params, json))
         return DummyResponse(json_data={"ok": True})
 
@@ -39,6 +41,7 @@ def test_headers_and_base_url():
 
 def test_request_raises_permission_error(monkeypatch):
     c = JiraClient("tok", "cloud-1")
+
     async def request(*a, **k):
         return types.SimpleNamespace(status_code=401, text="", request=None)
 
@@ -98,7 +101,11 @@ def test_search_jql_fallback(monkeypatch):
 
 
 def test_select_cloud_id_priority_and_errors():
-    session = {"tokens_by_cloud": {"a": 1, "b": 2}, "cloud_ids": ["a", "b"], "active_cloud_id": "b"}
+    session = {
+        "tokens_by_cloud": {"a": 1, "b": 2},
+        "cloud_ids": ["a", "b"],
+        "active_cloud_id": "b",
+    }
     req = types.SimpleNamespace(query_params={})
     # no query param -> active wins
     assert select_cloud_id(session, req) == "b"

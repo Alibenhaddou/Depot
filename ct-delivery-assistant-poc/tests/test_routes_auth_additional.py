@@ -150,7 +150,9 @@ def test_oauth_callback_success(monkeypatch):
 
     # stub accessible resources
     async def fake_accessible(token):
-        return [{"id": "c1", "url": "https://x", "scopes": ["read:jira-work"], "name": "C1"}]
+        return [
+            {"id": "c1", "url": "https://x", "scopes": ["read:jira-work"], "name": "C1"}
+        ]
 
     monkeypatch.setattr("app.routes.auth._get_accessible_resources", fake_accessible)
 

@@ -30,7 +30,14 @@ def test_jira_select_invalid_cloud(monkeypatch):
 
 def test_jira_issue_permission_error(monkeypatch):
     monkeypatch.setattr("app.routes.jira._ensure_sid", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.jira.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.jira.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -47,7 +54,14 @@ def test_jira_issue_permission_error(monkeypatch):
 
 def test_jira_issue_generic_exception(monkeypatch):
     monkeypatch.setattr("app.routes.jira._ensure_sid", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.jira.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.jira.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -64,7 +78,14 @@ def test_jira_issue_generic_exception(monkeypatch):
 
 def test_jira_search_httpstatus_propagates(monkeypatch):
     monkeypatch.setattr("app.routes.jira._ensure_sid", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.jira.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.jira.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -83,7 +104,14 @@ def test_jira_search_httpstatus_propagates(monkeypatch):
 
 def test_jira_search_generic_exception(monkeypatch):
     monkeypatch.setattr("app.routes.jira._ensure_sid", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.jira.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.jira.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):

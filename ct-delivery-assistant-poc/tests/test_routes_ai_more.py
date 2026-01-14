@@ -14,7 +14,14 @@ client = TestClient(app)
 
 def test_summarize_jql_llm_generic_exception(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.ai.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t1"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.ai.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -36,7 +43,14 @@ def test_summarize_jql_llm_generic_exception(monkeypatch):
 
 def test_summarize_jql_llm_http_exception(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.ai.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t1"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.ai.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -58,7 +72,14 @@ def test_summarize_jql_llm_http_exception(monkeypatch):
 
 def test_analyze_issue_404(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.ai.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t1"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.ai.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -80,7 +101,14 @@ def test_analyze_issue_404(monkeypatch):
 
 def test_analyze_issue_stream_success_with_links(monkeypatch):
     monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
-    monkeypatch.setattr("app.routes.ai.get_session", lambda sid: {"tokens_by_cloud": {"c1": {"access_token": "t1"}}, "cloud_ids": ["c1"], "active_cloud_id": "c1"})
+    monkeypatch.setattr(
+        "app.routes.ai.get_session",
+        lambda sid: {
+            "tokens_by_cloud": {"c1": {"access_token": "t1"}},
+            "cloud_ids": ["c1"],
+            "active_cloud_id": "c1",
+        },
+    )
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -91,13 +119,26 @@ def test_analyze_issue_stream_success_with_links(monkeypatch):
                 "key": "P-1",
                 "fields": {
                     "summary": "s",
-                    "description": {"type": "doc", "content": [{"type": "text", "text": "desc"}]},
-                    "issuelinks": [{"type": {"name": "rel"}, "outwardIssue": {"key": "A"}}],
+                    "description": {
+                        "type": "doc",
+                        "content": [{"type": "text", "text": "desc"}],
+                    },
+                    "issuelinks": [
+                        {"type": {"name": "rel"}, "outwardIssue": {"key": "A"}}
+                    ],
                 },
             }
 
         async def get_issue_comments(self, *a, **k):
-            return {"comments": [{"author": {"displayName": "A"}, "created": "t", "body": {"type": "text", "text": "c"}}]}
+            return {
+                "comments": [
+                    {
+                        "author": {"displayName": "A"},
+                        "created": "t",
+                        "body": {"type": "text", "text": "c"},
+                    }
+                ]
+            }
 
     monkeypatch.setattr("app.routes.ai.JiraClient", FakeClient)
 
@@ -106,9 +147,20 @@ def test_analyze_issue_stream_success_with_links(monkeypatch):
 
     monkeypatch.setattr(ai_mod, "_llm_step", fake_llm_step)
 
-    with client.stream("POST", "/ai/analyze-issue/stream", json={"issue_key": "P-1"}) as resp:
-        text = "\n".join([line.decode() if isinstance(line, bytes) else line for line in resp.iter_lines()])
-        assert "dependance" in text or "dependance(s)" in text or "dependance(s) detectee" in text
+    with client.stream(
+        "POST", "/ai/analyze-issue/stream", json={"issue_key": "P-1"}
+    ) as resp:
+        text = "\n".join(
+            [
+                line.decode() if isinstance(line, bytes) else line
+                for line in resp.iter_lines()
+            ]
+        )
+        assert (
+            "dependance" in text
+            or "dependance(s)" in text
+            or "dependance(s) detectee" in text
+        )
         assert "event: result" in text
         assert "ok-summary" in text
 

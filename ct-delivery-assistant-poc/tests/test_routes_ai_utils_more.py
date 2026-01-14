@@ -12,7 +12,12 @@ def test_iter_text_nodes_and_adf_variants():
 
 
 def test_extract_links_inward_and_filter():
-    fields = {"issuelinks": [{"type": {"name": "t"}, "inwardIssue": {"key": "I"}}, {"type": {}, "outwardIssue": {}}]}
+    fields = {
+        "issuelinks": [
+            {"type": {"name": "t"}, "inwardIssue": {"key": "I"}},
+            {"type": {}, "outwardIssue": {}},
+        ]
+    }
     links = ai_mod._extract_links(fields, limit=5)
     assert any(l.get("key") == "I" for l in links)
 
@@ -30,6 +35,7 @@ def test__llm_step_generic_exception(monkeypatch):
     try:
         # call through and expect HTTPException
         import asyncio
+
         asyncio.run(ai_mod._llm_step(FakeLLM(), title="T", system="s", user="u"))
         assert False, "expected"
     except Exception as e:

@@ -46,7 +46,9 @@ def _make_resp(json_data=None, text="", status=200):
         def raise_for_status(self):
             if self.status_code >= 400:
                 req = httpx.Request("POST", "http://test")
-                resp = httpx.Response(self.status_code, request=req, content=(self.text or "").encode())
+                resp = httpx.Response(
+                    self.status_code, request=req, content=(self.text or "").encode()
+                )
                 raise httpx.HTTPStatusError("err", request=req, response=resp)
 
     return R(json_data, text, status)
@@ -70,7 +72,7 @@ def test_chat_json_ollama_success(monkeypatch):
     c = LLMClient()
 
     async def fake_post(url, json=None):
-        return _make_resp({"message": {"content": '{"k": 1}' }}, "", 200)
+        return _make_resp({"message": {"content": '{"k": 1}'}}, "", 200)
 
     c._client.post = fake_post
 
@@ -196,7 +198,9 @@ def test_openai_chat_json_invalid_json(monkeypatch):
     c = LLMClient()
 
     async def fake_post(url, json=None):
-        return _make_resp({"choices": [{"message": {"content": "not-json"}}]}, "not-json", 200)
+        return _make_resp(
+            {"choices": [{"message": {"content": "not-json"}}]}, "not-json", 200
+        )
 
     c._client.post = fake_post
 

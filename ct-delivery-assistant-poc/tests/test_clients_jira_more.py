@@ -29,7 +29,9 @@ def test_request_401_raises_permission_error(monkeypatch):
     # monkeypatch the underlying low-level client.request to return a 401 response
     class FakeClient:
         async def request(self, *a, **k):
-            return types.SimpleNamespace(status_code=401, text="", request=types.SimpleNamespace())
+            return types.SimpleNamespace(
+                status_code=401, text="", request=types.SimpleNamespace()
+            )
 
     jc._client = FakeClient()
 

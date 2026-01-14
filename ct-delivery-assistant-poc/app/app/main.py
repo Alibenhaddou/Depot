@@ -10,7 +10,7 @@ from app.routes.auth import router as auth_router
 from app.routes.auth_ui import router as auth_ui_router
 from app.routes.jira import router as jira_router
 from app.routes.ai import router as ai_router
-from app.routes.ui import router as ui_router   # version "choix 2" => prefix="/ui"
+from app.routes.ui import router as ui_router  # version "choix 2" => prefix="/ui"
 from app.routes.debug import router as debug_router
 from fastapi.responses import RedirectResponse
 
