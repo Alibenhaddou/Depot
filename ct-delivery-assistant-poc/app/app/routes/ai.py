@@ -348,19 +348,6 @@ async def analyze_issue(
         f"Donnees: {payload}"
     )
 
-    # Proxy to ai-service if configured
-    ai_url = os.getenv("AI_SERVICE_URL")
-    if ai_url:
-        # forward minimally to ai-service and let it handle retrieval/analysis
-        payload_remote = {"issue_key": body.issue_key, "cloud_id": chosen_cloud, "max_comments": body.max_comments}
-        try:
-            res = await post_json("/ai/analyze-issue", payload_remote)
-        except httpx.HTTPStatusError as e:
-            if e.response is not None and e.response.status_code == 404:
-                raise HTTPException(404, "Ticket introuvable sur cette instance")
-            raise HTTPException(502, "Erreur ai-service (issue)")
-        return {"cloud_id": chosen_cloud, "result": res.get("result") or res}
-
     try:
         result = await llm.chat_text(system=system, user=user)
     except HTTPException:
@@ -398,17 +385,17 @@ async def analyze_issue_stream(
     ai_url = os.getenv("AI_SERVICE_URL")
     if ai_url:
         # Proxy SSE stream from ai-service as-is.
-        try:
-            async def remote_stream() -> AsyncIterator[str]:
-                async for chunk in stream_post("/ai/analyze-issue/stream", {"issue_key": body.issue_key, "cloud_id": chosen_cloud, "max_comments": body.max_comments}):
+        async def remote_stream() -> AsyncIterator[str]:
+            try:
+                async for chunk in stream_post(
+                    "/ai/analyze-issue/stream",
+                    {"issue_key": body.issue_key, "cloud_id": chosen_cloud, "max_comments": body.max_comments},
+                ):
                     yield chunk
-
-            return StreamingResponse(remote_stream(), media_type="text/event-stream")
-        except Exception:
-            async def err() -> AsyncIterator[str]:
+            except Exception:
                 yield _sse("error", {"code": 502, "message": "Erreur ai-service (stream)"})
 
-            return StreamingResponse(err(), media_type="text/event-stream")
+        return StreamingResponse(remote_stream(), media_type="text/event-stream")
 
     async def event_stream() -> AsyncIterator[str]:
         try:
@@ -502,17 +489,6 @@ async def analyze_issue_stream(
                     "direction": link.get("direction"),
                 }
             )
-
-        ai_url = os.getenv("AI_SERVICE_URL")
-        if ai_url:
-            # Stream proxy: POST to ai-service/stream and forward text chunks
-            try:
-                async for chunk in stream_post("/ai/analyze-issue/stream", payload_local):
-                    yield chunk
-                return
-            except Exception:
-                yield _sse("error", {"code": 502, "message": "Erreur ai-service (stream)"})
-                return
 
         # Fallback: local processing using llm as before
         system = (
