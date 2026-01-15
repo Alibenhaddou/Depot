@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     llm_model: str = "qwen2.5:3b"
     llm_timeout: int = 600
 
+    ai_service_url: str | None = None
+    ai_auth_enabled: bool = False
+    ai_shared_secret: str = "dev-shared-secret"
+    ai_token_ttl_seconds: int = 300
+
     @field_validator("cookie_samesite", mode="before")
     @classmethod
     def _validate_samesite(cls, v: Any) -> str:

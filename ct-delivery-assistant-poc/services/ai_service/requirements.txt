@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+httpx
+pydantic
+pytest
+pytest-asyncio
+prometheus-client
+itsdangerous
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-httpx

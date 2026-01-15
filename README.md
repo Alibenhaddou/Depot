@@ -19,6 +19,23 @@ cd ct-delivery-assistant-poc
 pytest -q
 ```
 
+- Pour utiliser le `ai-service` externe (migration progressive), exportez la variable d'environnement :
+
+```bash
+export AI_SERVICE_URL="http://ai-service:8000"
+```
+
+Avec `AI_SERVICE_URL` configurée, l'application principale fera un proxy des appels `/ai/*` vers le service externe (utile pour tests et migration canary).
+
+### Observabilité (optionnel)
+
+Pour activer le tracing OpenTelemetry (API principale + ai-service), configurez :
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT="http://otel-collector:4318/v1/traces"
+```
+
+Les métriques Prometheus sont exposées sur `/metrics` pour les deux services.
 - Générer le rapport de coverage HTML et XML :
 
 ```bash

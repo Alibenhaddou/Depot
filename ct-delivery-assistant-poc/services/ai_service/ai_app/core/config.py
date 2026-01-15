@@ -1,0 +1,20 @@
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-4.1-mini"
+
+    llm_provider: str = "ollama"
+    llm_base_url: str = "http://localhost:11434"
+    llm_model: str = "qwen2.5:3b"
+    llm_timeout: int = 600
+
+    ai_auth_enabled: bool = False
+    ai_shared_secret: str = "dev-shared-secret"
+    ai_token_ttl_seconds: int = 300
+
+
+settings = Settings()  # type: ignore[call-arg]

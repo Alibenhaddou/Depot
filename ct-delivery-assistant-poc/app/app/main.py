@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.routes.auth import router as auth_router
@@ -13,6 +14,15 @@ from app.routes.ai import router as ai_router
 from app.routes.ui import router as ui_router  # version "choix 2" => prefix="/ui"
 from app.routes.debug import router as debug_router
 from fastapi.responses import RedirectResponse
+from prometheus_client import (
+    generate_latest,
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Histogram,
+    CollectorRegistry,
+)
+
+from app.core.telemetry import setup_telemetry
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -29,6 +39,35 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="CT - Delivery Assistant (POC)", version="0.1.0")
+
+    registry = CollectorRegistry()
+
+    REQUEST_COUNT = Counter(
+        "http_requests_total",
+        "Total HTTP requests",
+        ["method", "path", "status"],
+        registry=registry,
+    )
+    REQUEST_LATENCY = Histogram(
+        "http_request_duration_seconds",
+        "HTTP request latency in seconds",
+        ["method", "path"],
+        registry=registry,
+    )
+
+    @app.middleware("http")
+    async def metrics_middleware(request: Request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        elapsed = time.perf_counter() - start
+        REQUEST_COUNT.labels(request.method, request.url.path, str(response.status_code)).inc()
+        REQUEST_LATENCY.labels(request.method, request.url.path).observe(elapsed)
+        return response
+
+    @app.get("/metrics", include_in_schema=False)
+    async def metrics():
+        data = generate_latest(registry)
+        return Response(content=data, media_type=CONTENT_TYPE_LATEST)
 
     @app.get("/", include_in_schema=False)
     async def root() -> RedirectResponse:
@@ -69,6 +108,9 @@ def create_app() -> FastAPI:
     enable_debug = _env_flag("ENABLE_DEBUG_ROUTES", default=False)
     if enable_debug:
         app.include_router(debug_router)
+
+    # OpenTelemetry (optional)
+    setup_telemetry(app, service_name="ct-delivery-assistant")
 
     return app
 

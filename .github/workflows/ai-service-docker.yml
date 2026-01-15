@@ -1,0 +1,15 @@
+name: AI Service Docker Image
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build-ai-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ai-service Docker image
+        run: docker build ct-delivery-assistant-poc/services/ai_service --file ct-delivery-assistant-poc/services/ai_service/Dockerfile --tag ai-service:$(date +%s)

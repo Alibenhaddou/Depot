@@ -1,0 +1,52 @@
+openapi: 3.0.0
+info:
+  title: ai-service (scaffold)
+  version: 0.1.0
+paths:
+  /ai/summarize-jql:
+    post:
+      summary: Summarize JQL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                jql:
+                  type: string
+                max_results:
+                  type: integer
+      responses:
+        '200':
+          description: OK
+  /ai/analyze-issue:
+    post:
+      summary: Analyze issue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                issue_key:
+                  type: string
+      responses:
+        '200':
+          description: OK
+  /ai/analyze-issue/stream:
+    post:
+      summary: Analyze issue (stream)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                issue_key:
+                  type: string
+      responses:
+        '200':
+          description: OK
