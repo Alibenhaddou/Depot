@@ -151,6 +151,7 @@ async def _llm_step(
 
 @router.post("/token")
 async def ai_token(request: Request, response: Response, body: AiTokenBody) -> Dict[str, Any]:
+    # Issue a short-lived token for ai-service (used by the proxy client).
     sid = ensure_session(request, response)
     session = get_session(sid) or {}
 
@@ -174,6 +175,7 @@ async def summarize_jql(
     # If ai-service configured, avoid Jira calls here and forward minimal payload
     ai_url = os.getenv("AI_SERVICE_URL")
     if ai_url:
+        # Forward only required data; ai-service owns LLM behavior.
         payload = {"jql": body.jql, "max_results": body.max_results, "cloud_id": body.cloud_id}
         try:
             result = await post_json("/ai/summarize-jql", payload)
@@ -252,6 +254,7 @@ async def analyze_issue(
     # If ai-service is available, forward minimal request and let it handle retrieval
     ai_url = os.getenv("AI_SERVICE_URL")
     if ai_url:
+        # Keep API as a thin proxy when ai-service is enabled.
         payload_remote = {"issue_key": body.issue_key, "cloud_id": chosen_cloud, "max_comments": body.max_comments}
         try:
             res = await post_json("/ai/analyze-issue", payload_remote)
@@ -394,6 +397,7 @@ async def analyze_issue_stream(
     # If ai-service configured, proxy the streaming call and avoid backend Jira calls here
     ai_url = os.getenv("AI_SERVICE_URL")
     if ai_url:
+        # Proxy SSE stream from ai-service as-is.
         try:
             async def remote_stream() -> AsyncIterator[str]:
                 async for chunk in stream_post("/ai/analyze-issue/stream", {"issue_key": body.issue_key, "cloud_id": chosen_cloud, "max_comments": body.max_comments}):

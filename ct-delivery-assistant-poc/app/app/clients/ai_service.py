@@ -8,10 +8,12 @@ from app.core.ai_token import generate_ai_token
 
 
 def _ai_url() -> str:
+    # Allow runtime override via env for canary/prod without code changes.
     return os.getenv("AI_SERVICE_URL") or (settings.ai_service_url or "")
 
 
 def _auth_headers(payload: Dict[str, Any]) -> Dict[str, str]:
+    # Inter-service auth is optional; token is short-lived and signed.
     if not settings.ai_auth_enabled:
         return {}
     token = generate_ai_token({"cloud_id": payload.get("cloud_id")})

@@ -4,6 +4,7 @@ import os
 def setup_telemetry(app, service_name: str) -> None:
     endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
     if not endpoint:
+        # No endpoint configured => tracing disabled.
         return
 
     try:
@@ -15,7 +16,7 @@ def setup_telemetry(app, service_name: str) -> None:
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
         from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
     except Exception:
-        # OpenTelemetry dependencies not installed
+        # OpenTelemetry dependencies not installed; ignore silently.
         return
 
     resource = Resource.create({"service.name": service_name})
