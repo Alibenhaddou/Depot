@@ -10,7 +10,35 @@
 
 Petit service FastAPI utilisé pour démonstration / POC autour d'intégrations Atlassian, LLMs et sessions.
 
+## Architecture (vue rapide)
+
+```mermaid
+flowchart LR
+	UI[UI / Navigateur] --> API[API principale FastAPI]
+	API -->|Jira REST| Jira[(Atlassian Jira Cloud)]
+	API -->|Redis sessions| Redis[(Redis)]
+	API -->|Proxy /ai/*| AISVC[ai-service FastAPI]
+	AISVC -->|LLM API| LLM[(LLM Provider)]
+```
+
 ## Tests et couverture
+
+## Démarrage rapide (dev)
+
+1) Copier la configuration d'exemple :
+
+```bash
+cp ct-delivery-assistant-poc/.env.example ct-delivery-assistant-poc/.env
+```
+
+2) Lancer l'app (avec Redis) :
+
+```bash
+cd ct-delivery-assistant-poc
+docker-compose up --build
+```
+
+3) Ouvrir l'UI : http://localhost:8000
 
 - Lancer la suite de tests :
 
