@@ -2,6 +2,7 @@ fastapi
 uvicorn[standard]
 httpx
 pydantic
+pydantic-settings
 pytest
 pytest-asyncio
 prometheus-client
