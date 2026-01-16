@@ -34,8 +34,8 @@ def _redirect_uri(request: Request) -> str:
     dynamiques type Codespace, GitLab, etc.).
     """
     redirect_uri = getattr(settings, "atlassian_redirect_uri", None)
-    if redirect_uri:
-        return redirect_uri
+    if redirect_uri and redirect_uri.strip():
+        return redirect_uri.strip()
     # fallback : construire l'URL absolue pour la route `oauth_callback`
     return str(request.url_for("oauth_callback"))
 
