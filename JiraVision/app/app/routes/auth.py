@@ -170,9 +170,13 @@ async def oauth_callback(
         raise HTTPException(400, "Réponse token inattendue")
 
     resources = await _get_accessible_resources(access_token)
-    logging.getLogger(__name__).info("Accessible resources count: %s", len(resources))
+    logging.getLogger(__name__).info(
+        "Accessible resources count: %s", len(resources)
+    )
     jira_resources = _pick_jira_resources(resources)
-    logging.getLogger(__name__).info("Jira resources found: %s", [r.get("id") for r in jira_resources])
+    logging.getLogger(__name__).info(
+        "Jira resources found: %s", [r.get("id") for r in jira_resources]
+    )
     if not jira_resources:
         raise HTTPException(400, "Aucune ressource Jira trouvée")
 
@@ -228,28 +232,28 @@ async def oauth_callback(
                     cloud_id=cloud_id,
                 )
                 clients.append((cloud_id, client))
-        
+
         if clients:
             hidden = get_hidden_projects_state(session)
             projects = await sync_reporter_projects(clients, hidden)
-            
+
             # Filter out hidden projects
             visible_projects = [
-                p for p in projects 
+                p for p in projects
                 if p.visibility.value == "visible"
             ]
-            
+
             # Store in session
             session["reporter_projects"] = [p.model_dump() for p in visible_projects]
             session["reporter_projects_sync_at"] = datetime.now(timezone.utc).isoformat()
             set_session(sid, session)
-            
+
             # Close all clients
             for _, client in clients:
                 await client.aclose()
-                
+
             logging.getLogger(__name__).info(
-                "Auto-synced %d reporter projects for sid=%s", 
+                "Auto-synced %d reporter projects for sid=%s",
                 len(visible_projects), sid
             )
     except Exception as e:
