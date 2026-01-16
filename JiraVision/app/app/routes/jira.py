@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import httpx
 from typing import Any, Dict
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request, Response
 
@@ -253,7 +253,7 @@ async def sync_reporter_projects_endpoint(
     if not cloud_ids:
         # Return empty list if no instances connected
         session["reporter_projects"] = []
-        session["reporter_projects_sync_at"] = datetime.utcnow().isoformat()
+        session["reporter_projects_sync_at"] = datetime.now(timezone.utc).isoformat()
         set_session(sid, session)
         return JiraProjectsResponse(
             projects=[],
@@ -288,7 +288,7 @@ async def sync_reporter_projects_endpoint(
         # Store in session
         # Convert to dict for JSON serialization
         session["reporter_projects"] = [p.model_dump() for p in visible_projects]
-        session["reporter_projects_sync_at"] = datetime.utcnow().isoformat()
+        session["reporter_projects_sync_at"] = datetime.now(timezone.utc).isoformat()
         set_session(sid, session)
         
         return JiraProjectsResponse(

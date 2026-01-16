@@ -4,7 +4,7 @@ import secrets
 import time
 from typing import Any, Dict, Optional, List, cast
 from urllib.parse import urlencode
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -241,7 +241,7 @@ async def oauth_callback(
             
             # Store in session
             session["reporter_projects"] = [p.model_dump() for p in visible_projects]
-            session["reporter_projects_sync_at"] = datetime.utcnow().isoformat()
+            session["reporter_projects_sync_at"] = datetime.now(timezone.utc).isoformat()
             set_session(sid, session)
             
             # Close all clients
