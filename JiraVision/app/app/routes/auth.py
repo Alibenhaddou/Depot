@@ -12,7 +12,9 @@ from itsdangerous import BadSignature
 
 from app.core.config import settings
 from app.core.redis import get_session, set_session
+from app.core.po_user import upsert_user_from_jira
 from app.auth.session_store import ensure_session, destroy_session, state_serializer
+from app.clients.jira import JiraClient
 
 router = APIRouter(tags=["auth"])
 
@@ -207,6 +209,31 @@ async def oauth_callback(
     session["access_token"] = active_entry["access_token"]
     session["site_url"] = active_entry["site_url"]
     session["scopes"] = active_entry.get("scopes", [])
+
+    # Sync Jira user into DB and attach to session
+    jira_client = JiraClient(access_token=active_entry["access_token"], cloud_id=active_cid)
+    try:
+        me = await jira_client.get_myself()
+    except PermissionError:
+        await jira_client.aclose()
+        raise HTTPException(502, "Erreur Jira (auth utilisateur)")
+    except httpx.HTTPStatusError:
+        await jira_client.aclose()
+        raise HTTPException(502, "Erreur Jira (myself)")
+    except Exception:
+        await jira_client.aclose()
+        raise HTTPException(502, "Erreur Jira (myself)")
+    else:
+        await jira_client.aclose()
+
+    try:
+        user = upsert_user_from_jira(me)
+    except ValueError:
+        raise HTTPException(502, "Erreur Jira (accountId manquant)")
+
+    session["jira_account_id"] = user.get("jira_account_id")
+    session["jira_display_name"] = user.get("display_name")
+    session["jira_email"] = user.get("email")
 
     session.pop("state", None)
     set_session(sid, session)
