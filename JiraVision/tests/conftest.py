@@ -16,7 +16,7 @@ if ROOT not in sys.path:
 # constructed during imports
 os.environ.setdefault("atlassian_client_id", "test-id")
 os.environ.setdefault("atlassian_client_secret", "test-secret")
-os.environ.setdefault("atlassian_redirect_uri", "http://localhost/cb")
+os.environ.setdefault("atlassian_redirect_uri", "")
 os.environ.setdefault("atlassian_scopes", "read:jira")
 os.environ.setdefault("app_secret_key", "secret-for-tests")
 
