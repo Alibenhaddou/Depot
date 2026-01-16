@@ -26,7 +26,7 @@ jobs:
 
       - name: Bandit scan (exclude tests)
         run: |
-          bandit -r JiraVision --exclude JiraVision/tests -q -f json -o bandit-report.json
+          bandit -r JiraVision --exclude JiraVision/tests,JiraVision/services/ai_service/tests -q -f json -o bandit-report.json
           cat bandit-report.json
 
       - name: Dependency scan (pip-audit)

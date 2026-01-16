@@ -1,6 +1,5 @@
 import sys
 import pathlib
-import pytest
 from fastapi.testclient import TestClient
 
 # Ensure our local services/ai_service is discoverable and import the package 'ai_app'
@@ -10,8 +9,6 @@ if str(root) not in sys.path:
 
 import ai_app.main as ai_main
 import ai_app.routes.ai as ai_routes
-
-from fastapi.testclient import TestClient
 
 client = TestClient(ai_main.app)
 

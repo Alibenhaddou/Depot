@@ -1,13 +1,12 @@
-from typing import Any, Dict, List, Optional, AsyncIterator
+from typing import Any, Dict, Optional, AsyncIterator
 
-from fastapi import APIRouter, HTTPException, Request, Response
+import json
+
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.clients.llm import LLMClient
-
 router = APIRouter(prefix="/ai", tags=["ai"])
-llm = LLMClient()
 
 
 class SummarizeJqlBody(BaseModel):

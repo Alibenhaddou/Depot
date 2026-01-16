@@ -18,6 +18,9 @@ returned
 summarize_jql
 analyze_issue
 analyze_issue_stream
+ai_token
+metrics_middleware
+metrics
 login
 oauth_callback
 logout
