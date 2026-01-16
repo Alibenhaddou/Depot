@@ -11,12 +11,14 @@ def test_key():
 
 
 def test_get_session_none_when_missing(monkeypatch):
+    core_redis._redis_available = True
     fake = types.SimpleNamespace(get=lambda k: None)
     monkeypatch.setattr(core_redis, "redis_client", fake)
     assert core_redis.get_session("sid") is None
 
 
 def test_get_session_parses_and_refreshes_ttl(monkeypatch):
+    core_redis._redis_available = True
     stored = {"user": "bob"}
 
     def fake_get(k):
@@ -39,6 +41,8 @@ def test_get_session_parses_and_refreshes_ttl(monkeypatch):
 
 def test_get_session_falls_back_to_local_store_when_redis_down(monkeypatch):
     core_redis._local_store.clear()
+    core_redis._redis_available = True
+    core_redis._redis_warned = False
     core_redis._local_store["session:sid"] = json.dumps({"x": 1})
 
     def raising_get(_k):
@@ -49,9 +53,11 @@ def test_get_session_falls_back_to_local_store_when_redis_down(monkeypatch):
     monkeypatch.setattr(core_redis, "redis_client", fake)
 
     assert core_redis.get_session("sid") == {"x": 1}
+    assert core_redis._redis_available is False
 
 
 def test_set_session_calls_set(monkeypatch):
+    core_redis._redis_available = True
     captured = {}
 
     def fake_set(k, v, ex=None):
@@ -71,6 +77,8 @@ def test_set_session_calls_set(monkeypatch):
 
 def test_set_session_falls_back_to_local_store_on_error(monkeypatch):
     core_redis._local_store.clear()
+    core_redis._redis_available = True
+    core_redis._redis_warned = False
 
     def raising_set(*_a, **_k):
         raise RuntimeError("redis down")
@@ -80,9 +88,11 @@ def test_set_session_falls_back_to_local_store_on_error(monkeypatch):
 
     core_redis.set_session("sid", {"k": "v"})
     assert json.loads(core_redis._local_store["session:sid"]) == {"k": "v"}
+    assert core_redis._redis_available is False
 
 
 def test_delete_session_calls_delete(monkeypatch):
+    core_redis._redis_available = True
     called = {}
 
     def fake_delete(k):
@@ -97,6 +107,8 @@ def test_delete_session_calls_delete(monkeypatch):
 
 def test_delete_session_falls_back_to_local_store_on_error(monkeypatch):
     core_redis._local_store.clear()
+    core_redis._redis_available = True
+    core_redis._redis_warned = False
     core_redis._local_store["session:sid"] = json.dumps({"a": 1})
 
     def raising_delete(_k):

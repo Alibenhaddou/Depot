@@ -19,6 +19,31 @@ redis_client = redis.Redis(
 
 # Fallback in-memory store used when Redis is not available (dev only)
 _local_store: Dict[str, str] = {}
+_redis_available: Optional[bool] = None
+_redis_warned: bool = False
+
+
+def _mark_redis_unavailable() -> None:
+    global _redis_available, _redis_warned
+    _redis_available = False
+    if not _redis_warned:
+        logger.warning("Redis not available, falling back to in-memory sessions")
+        _redis_warned = True
+
+
+def _ensure_redis_available() -> bool:
+    global _redis_available
+    if _redis_available is False:
+        return False
+    if _redis_available is True:
+        return True
+    try:
+        redis_client.ping()
+        _redis_available = True
+        return True
+    except Exception:
+        _mark_redis_unavailable()
+        return False
 
 
 def _key(sid: str) -> str:
@@ -36,12 +61,15 @@ def get_session(sid: str) -> Optional[Dict[str, Any]]:
     return None rather than bubbling an exception to the caller.
     """
     key = _key(sid)
-    try:
-        raw = redis_client.get(key)
-    except Exception:
-        # Redis unavailable -> fall back to local store
-        logger.warning("Redis not available, falling back to in-memory sessions")
+    if not _ensure_redis_available():
         raw = _local_store.get(key)
+    else:
+        try:
+            raw = redis_client.get(key)
+        except Exception:
+            # Redis unavailable -> fall back to local store
+            _mark_redis_unavailable()
+            raw = _local_store.get(key)
 
     if not raw:
         return None
@@ -51,11 +79,13 @@ def get_session(sid: str) -> Optional[Dict[str, Any]]:
         return None
 
     # refresh TTL (best-effort; ignore errors)
-    try:
-        redis_client.expire(key, settings.session_max_age_seconds)
-    except Exception:
-        # if redis is down the in-memory store doesn't support TTLs
-        logger.debug("Redis expire failed (ignored)", exc_info=True)
+    if _ensure_redis_available():
+        try:
+            redis_client.expire(key, settings.session_max_age_seconds)
+        except Exception:
+            # if redis is down the in-memory store doesn't support TTLs
+            _mark_redis_unavailable()
+            logger.debug("Redis expire failed (ignored)", exc_info=True)
     return session
 
 
@@ -63,15 +93,22 @@ def set_session(sid: str, session: Dict[str, Any]) -> None:
     """Store the session in Redis if available; fall back to in-memory store on errors."""
     key = _key(sid)
     payload = json.dumps(session)
+    if not _ensure_redis_available():
+        _local_store[key] = payload
+        return
     try:
         redis_client.set(key, payload, ex=settings.session_max_age_seconds)
     except Exception:
-        logger.warning("Redis write failed, storing session in-memory (dev only)")
+        _mark_redis_unavailable()
         _local_store[key] = payload
 
 
 def delete_session(sid: str) -> None:
+    if not _ensure_redis_available():
+        _local_store.pop(_key(sid), None)
+        return
     try:
         redis_client.delete(_key(sid))
     except Exception:
+        _mark_redis_unavailable()
         _local_store.pop(_key(sid), None)
