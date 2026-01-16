@@ -8,7 +8,7 @@
 
 ## Description
 
-Petit service FastAPI utilisé pour démonstration / POC autour d'intégrations Atlassian, LLMs et sessions.
+JiraVision est un service FastAPI utilisé pour démonstration / POC autour d'intégrations Atlassian, LLMs et sessions.
 
 ## Architecture (vue rapide)
 
@@ -28,13 +28,13 @@ flowchart LR
 1) Copier la configuration d'exemple :
 
 ```bash
-cp ct-delivery-assistant-poc/.env.example ct-delivery-assistant-poc/.env
+cp JiraVision/.env.example JiraVision/.env
 ```
 
 2) Lancer l'app (avec Redis) :
 
 ```bash
-cd ct-delivery-assistant-poc
+cd JiraVision
 docker-compose up --build
 ```
 
@@ -43,7 +43,7 @@ docker-compose up --build
 - Lancer la suite de tests :
 
 ```bash
-cd ct-delivery-assistant-poc
+cd JiraVision
 pytest -q
 ```
 
@@ -67,7 +67,7 @@ Les métriques Prometheus sont exposées sur `/metrics` pour les deux services.
 - Générer le rapport de coverage HTML et XML :
 
 ```bash
-cd ct-delivery-assistant-poc
+cd JiraVision
 pytest --cov=app --cov-report=xml:coverage.xml --cov-report=html:htmlcov -q
 ```
 
@@ -75,7 +75,7 @@ pytest --cov=app --cov-report=xml:coverage.xml --cov-report=html:htmlcov -q
 
 ```bash
 # partir du repo racine
-python -m http.server --directory ct-delivery-assistant-poc/htmlcov 8000
+python -m http.server --directory JiraVision/htmlcov 8000
 # ouvrir http://localhost:8000 dans votre navigateur
 ```
 

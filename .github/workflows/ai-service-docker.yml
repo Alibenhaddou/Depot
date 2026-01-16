@@ -12,4 +12,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build ai-service Docker image
-        run: docker build ct-delivery-assistant-poc/services/ai_service --file ct-delivery-assistant-poc/services/ai_service/Dockerfile --tag ai-service:$(date +%s)
+        run: docker build JiraVision/services/ai_service --file JiraVision/services/ai_service/Dockerfile --tag ai-service:$(date +%s)

@@ -49,6 +49,171 @@
     const logoutArea = $("logoutArea");
     if (!logoutArea) return;
 
+    const logged = Boolean(state.logged_in);
+    logoutArea.replaceChildren();
+
+    if (!logged) return;
+
+    const a = el("a", { href: safePath(state.logout_url, "/logout") });
+    const btn = el("button", { type: "button", text: "Logout" });
+    a.appendChild(btn);
+    logoutArea.appendChild(a);
+  }
+
+  function renderInstanceList(sites) {
+    const list = $("instanceList");
+    if (!list) return;
+
+    list.replaceChildren();
+
+    if (!sites.length) {
+      list.appendChild(el("span", { class: "pill inactive", text: "Aucune" }));
+      return;
+    }
+
+    for (const s of sites) {
+      const label = s.name || s.url || s.id;
+      const isActive = activeCloudIds.has(s.id);
+      const cls = isActive ? "pill active" : "pill inactive";
+      const btn = el("button", {
+        type: "button",
+        class: cls,
+        text: label,
+        "data-cloud-id": s.id,
+        "aria-pressed": isActive ? "true" : "false",
+      });
+      btn.addEventListener("click", () => toggleCloudId(s.id));
+      list.appendChild(btn);
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* jira multi-instance                                                  */
+  /* ------------------------------------------------------------------ */
+
+  const activeCloudIds = new Set();
+  let knownSites = [];
+
+  function setView(hasInstances) {
+    const appContent = $("appContent");
+    if (!appContent) return;
+    appContent.classList.toggle("hidden", !hasInstances);
+  }
+
+  function toggleCloudId(id) {
+    if (activeCloudIds.has(id)) activeCloudIds.delete(id);
+    else activeCloudIds.add(id);
+    renderInstanceList(knownSites);
+  }
+
+  async function refreshSites() {
+    const r = await fetchJson("/jira/instances");
+
+    if (!r.ok || !r.json) {
+      renderInstanceList([]);
+      setView(false);
+      return;
+    }
+
+    knownSites = r.json.jira_sites || [];
+
+    if (!knownSites.length) {
+      renderInstanceList([]);
+      setView(false);
+      window.location.href = "/auth";
+      return;
+    }
+
+    const knownIds = new Set(knownSites.map((s) => s.id));
+    if (!activeCloudIds.size) {
+      for (const id of knownIds) activeCloudIds.add(id);
+    } else {
+      for (const id of Array.from(activeCloudIds)) {
+        if (!knownIds.has(id)) activeCloudIds.delete(id);
+      }
+      if (!activeCloudIds.size) {
+        for (const id of knownIds) activeCloudIds.add(id);
+      }
+    }
+
+    renderInstanceList(knownSites);
+    setView(true);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* boot                                                                 */
+  /* ------------------------------------------------------------------ */
+
+  async function boot() {
+    const s = await fetchJson("/ui/state");
+    if (!s.ok || !s.json) {
+      console.error("Erreur /ui/state", s.status);
+      return;
+    }
+
+    if (!s.json.logged_in) {
+      window.location.href = "/auth";
+      return;
+    }
+
+    renderTopbar(s.json);
+    refreshSites();
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    boot().catch((e) => console.error("Boot error", e));
+  });
+})();(() => {
+  const $ = (id) => document.getElementById(id);
+
+  /* ------------------------------------------------------------------ */
+  /* utils                                                               */
+  /* ------------------------------------------------------------------ */
+
+  const tryJson = (text) => { try { return JSON.parse(text); } catch { return null; } };
+
+  const safePath = (p, fallback = "/") =>
+    (typeof p === "string" && p.startsWith("/")) ? p : fallback;
+
+  const withCacheBuster = (url) => {
+    const u = new URL(url, window.location.origin);
+    u.searchParams.set("_ts", String(Date.now()));
+    return u.toString();
+  };
+
+  const fetchText = async (url, opts = {}) => {
+    const res = await fetch(withCacheBuster(url), {
+      credentials: "same-origin",
+      cache: "no-store",
+      ...opts,
+    });
+    const text = await res.text();
+    return { ok: res.ok, status: res.status, statusText: res.statusText, text };
+  };
+
+  const fetchJson = async (url, opts = {}) => {
+    const r = await fetchText(url, opts);
+    return { ...r, json: tryJson(r.text) };
+  };
+
+  const el = (tag, attrs = {}, children = []) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "text") n.textContent = v;
+      else n.setAttribute(k, v);
+    }
+    for (const c of children) n.appendChild(c);
+    return n;
+  };
+
+  /* ------------------------------------------------------------------ */
+  /* top bar                                                             */
+  /* ------------------------------------------------------------------ */
+
+  function renderTopbar(state) {
+    const logoutArea = $("logoutArea");
+    if (!logoutArea) return;
+
     // login / logout
     const logged = Boolean(state.logged_in);
     logoutArea.replaceChildren();

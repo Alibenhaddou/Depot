@@ -3,7 +3,7 @@ import sys
 import types
 import importlib
 
-# Ensure the package 'app' (ct-delivery-assistant-poc/app) is importable during tests
+# Ensure the package 'app' (JiraVision/app) is importable during tests
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app"))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)

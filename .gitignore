@@ -7,15 +7,15 @@ __pycache__/
 .pytest_cache/
 
 # Coverage
-ct-delivery-assistant-poc/.coverage
-ct-delivery-assistant-poc/htmlcov/
-ct-delivery-assistant-poc/coverage.xml
+JiraVision/.coverage
+JiraVision/htmlcov/
+JiraVision/coverage.xml
 .coverage
 
 # Local env / secrets
-ct-delivery-assistant-poc/.env
-ct-delivery-assistant-poc/env
-ct-delivery-assistant-poc/sessions.json
+JiraVision/.env
+JiraVision/env
+JiraVision/sessions.json
 
 # Logs
 uvicorn_server.log

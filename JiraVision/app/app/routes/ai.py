@@ -177,7 +177,33 @@ async def summarize_jql(
     sid = ensure_session(request, response)
     session = get_session(sid) or {}
 
-    chosen_cloud = body.cloud_id or select_cloud_id(session, request)
+    chosen_cloud = body.cloud_id
+
+    if ai_url:
+        if not chosen_cloud:
+            try:
+                chosen_cloud = select_cloud_id(session, request)
+            except HTTPException:
+                chosen_cloud = None
+
+        payload = {
+            "jql": body.jql,
+            "max_results": body.max_results,
+        }
+        if chosen_cloud:
+            payload["cloud_id"] = chosen_cloud
+
+        try:
+            result = await post_json("/ai/summarize-jql", payload)
+        except httpx.HTTPStatusError:
+            raise HTTPException(502, "Erreur ai-service")
+        return {
+            "cloud_id": chosen_cloud,
+            "count": result.get("count"),
+            "result": result.get("result") or result,
+        }
+
+    chosen_cloud = chosen_cloud or select_cloud_id(session, request)
 
     entry = (session.get("tokens_by_cloud") or {}).get(chosen_cloud)
     if not entry:
@@ -196,24 +222,6 @@ async def summarize_jql(
         raise HTTPException(502, "Erreur lors de l'appel Jira (search_jql)")
 
     issues = _simplify_issues(data, limit=body.max_results)
-
-    if ai_url:
-        # Forward pre-fetched issues so ai-service only handles the LLM step.
-        payload = {
-            "jql": body.jql,
-            "max_results": body.max_results,
-            "cloud_id": chosen_cloud,
-            "issues": issues,
-        }
-        try:
-            result = await post_json("/ai/summarize-jql", payload)
-        except httpx.HTTPStatusError:
-            raise HTTPException(502, "Erreur ai-service")
-        return {
-            "cloud_id": chosen_cloud,
-            "count": result.get("count") or len(issues),
-            "result": result.get("result") or result,
-        }
 
     system = (
         "Tu es un assistant Delivery interne. "

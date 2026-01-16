@@ -1,6 +1,6 @@
 # Migration plan: extract `ai` into `ai-service`
 
-Short checklist and steps to perform the extraction safely.
+Short checklist and steps to perform the extraction safely for JiraVision.
 
 1. Create `ai-service` scaffold (done) under `services/ai_service`.
 2. Define OpenAPI spec for `/ai/*` endpoints (openapi.yaml included).

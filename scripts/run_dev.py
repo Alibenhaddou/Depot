@@ -9,8 +9,8 @@ candidates = [
     os.path.abspath("."),
     os.path.abspath("app"),
     os.path.abspath("app/app"),
-    os.path.abspath("ct-delivery-assistant-poc/app"),
-    os.path.abspath("ct-delivery-assistant-poc/app/app"),
+    os.path.abspath("JiraVision/app"),
+    os.path.abspath("JiraVision/app/app"),
 ]
 
 for p in candidates:

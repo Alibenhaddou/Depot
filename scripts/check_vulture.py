@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGET = ROOT / "ct-delivery-assistant-poc" / "app" / "app"
+TARGET = ROOT / "JiraVision" / "app" / "app"
 WHITELIST = ROOT / "tools" / "vulture_whitelist.txt"
 MIN_CONFIDENCE = "50"
 
