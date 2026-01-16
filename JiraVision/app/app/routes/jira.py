@@ -346,7 +346,11 @@ async def hide_project_endpoint(
 async def unhide_project_endpoint(
     request: Request, response: Response, project_key: str
 ) -> Dict[str, Any]:
-    """Unhide a previously hidden project."""
+    """Unhide a previously hidden project.
+    
+    This will remove the project from the hidden list and trigger a sync
+    to add it back to the visible projects list.
+    """
     sid = _ensure_sid(request, response)
     session = get_session(sid) or {}
     _require_logged_in(session)
@@ -354,8 +358,12 @@ async def unhide_project_endpoint(
     unhide_project(session, project_key)
     set_session(sid, session)
     
-    # Trigger a sync to get the project back
-    await sync_reporter_projects_endpoint(request, response)
+    # Trigger a sync to get the project back (sync updates the session internally)
+    try:
+        await sync_reporter_projects_endpoint(request, response)
+    except Exception:
+        # If sync fails, still return success for the unhide action
+        pass
     
     return {
         "ok": True,

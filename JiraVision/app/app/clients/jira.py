@@ -1,6 +1,6 @@
 from __future__ import annotations
 from fastapi import HTTPException, Request
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, Optional, List, cast
 
 import httpx
 
@@ -102,7 +102,7 @@ class JiraClient:
         jql: str,
         max_results: int = 20,
         next_page_token: Optional[str] = None,
-        fields: Optional[list[str]] = None,
+        fields: Optional[List[str]] = None,
     ) -> Any:
         max_results = max(1, min(max_results, 50))
         if fields is None:

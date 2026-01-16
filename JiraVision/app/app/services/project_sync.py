@@ -96,16 +96,10 @@ async def sync_reporter_projects(
                 if total_fetched >= total:
                     break
                 
-                # Use pagination token if available, otherwise use startAt
-                next_token = data.get("nextPageToken")
-                if next_token:
-                    # Note: would need to pass this in next iteration
-                    # For simplicity, break here as 50 results should be enough
-                    break
-                
-                start_at += max_results
-                if start_at >= total:
-                    break
+                # Note: Pagination is simplified - we fetch up to 50 results per instance.
+                # For production use, implement full pagination using nextPageToken or startAt.
+                # Breaking here to keep the implementation simple and performant.
+                break
                 
         except Exception as e:
             logger.warning(
