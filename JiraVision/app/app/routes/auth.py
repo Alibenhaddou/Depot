@@ -4,6 +4,7 @@ import secrets
 import time
 from typing import Any, Dict, Optional, List, cast
 from urllib.parse import urlencode
+from datetime import datetime
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -13,6 +14,8 @@ from itsdangerous import BadSignature
 from app.core.config import settings
 from app.core.redis import get_session, set_session
 from app.auth.session_store import ensure_session, destroy_session, state_serializer
+from app.clients.jira import JiraClient
+from app.services.project_sync import sync_reporter_projects, get_hidden_projects_state
 
 router = APIRouter(tags=["auth"])
 
@@ -213,6 +216,47 @@ async def oauth_callback(
 
     import logging
     logging.getLogger(__name__).info("Session after token exchange for sid=%s: %s", sid, session)
+
+    # Auto-sync reporter projects on login
+    try:
+        clients = []
+        for cloud_id in session["cloud_ids"]:
+            entry = tokens_by_cloud.get(cloud_id)
+            if entry and entry.get("access_token"):
+                client = JiraClient(
+                    access_token=entry["access_token"],
+                    cloud_id=cloud_id,
+                )
+                clients.append((cloud_id, client))
+        
+        if clients:
+            hidden = get_hidden_projects_state(session)
+            projects = await sync_reporter_projects(clients, hidden)
+            
+            # Filter out hidden projects
+            visible_projects = [
+                p for p in projects 
+                if p.visibility.value == "visible"
+            ]
+            
+            # Store in session
+            session["reporter_projects"] = [p.model_dump() for p in visible_projects]
+            session["reporter_projects_sync_at"] = datetime.utcnow().isoformat()
+            set_session(sid, session)
+            
+            # Close all clients
+            for _, client in clients:
+                await client.aclose()
+                
+            logging.getLogger(__name__).info(
+                "Auto-synced %d reporter projects for sid=%s", 
+                len(visible_projects), sid
+            )
+    except Exception as e:
+        # Don't fail login if project sync fails
+        logging.getLogger(__name__).warning(
+            "Failed to auto-sync reporter projects: %s", e, exc_info=True
+        )
 
     resp = RedirectResponse(url=POST_LOGIN_REDIRECT)
     ensure_session(request, resp)

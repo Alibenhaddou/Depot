@@ -102,12 +102,11 @@ class JiraClient:
         jql: str,
         max_results: int = 20,
         next_page_token: Optional[str] = None,
+        fields: Optional[list[str]] = None,
     ) -> Any:
         max_results = max(1, min(max_results, 50))
-        body: Dict[str, Any] = {
-            "jql": jql,
-            "maxResults": max_results,
-            "fields": [
+        if fields is None:
+            fields = [
                 "summary",
                 "status",
                 "issuetype",
@@ -115,7 +114,11 @@ class JiraClient:
                 "assignee",
                 "updated",
                 "created",
-            ],
+            ]
+        body: Dict[str, Any] = {
+            "jql": jql,
+            "maxResults": max_results,
+            "fields": fields,
             "fieldsByKeys": True,
         }
         if next_page_token:
@@ -126,6 +129,10 @@ class JiraClient:
             if e.response is not None and e.response.status_code in (404, 410):
                 return await self._request("POST", "/search", json_body=body)
             raise
+
+    async def get_current_user(self) -> Any:
+        """Get the current user's account information."""
+        return await self._request("GET", "/myself")
 
 
 def select_cloud_id(session: Dict[str, Any], request: Request) -> str:

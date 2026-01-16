@@ -2,12 +2,21 @@ from __future__ import annotations
 
 import httpx
 from typing import Any, Dict
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Request, Response
 
 from app.auth.session_store import ensure_session
 from app.core.redis import get_session, set_session
 from app.clients.jira import JiraClient, select_cloud_id
+from app.models.jira import JiraProjectsResponse
+from app.services.project_sync import (
+    sync_reporter_projects,
+    get_hidden_projects_state,
+    hide_project,
+    unhide_project,
+    clear_temporary_hidden,
+)
 
 router = APIRouter(prefix="/jira", tags=["jira"])
 
@@ -194,4 +203,162 @@ async def jira_instances(request: Request, response: Response) -> Dict[str, Any]
         "cloud_ids": session.get("cloud_ids") or [],
         "active_cloud_id": session.get("active_cloud_id"),
         "jira_sites": safe_sites,
+    }
+
+
+@router.get("/projects/reporter", response_model=JiraProjectsResponse)
+async def get_reporter_projects(
+    request: Request, response: Response
+) -> JiraProjectsResponse:
+    """Get projects where the current user is a reporter.
+    
+    Returns projects from all active instances, excluding those with
+    all issues in Done/Annulé status.
+    """
+    sid = _ensure_sid(request, response)
+    session = get_session(sid) or {}
+    _require_logged_in(session)
+    
+    # Get cached projects if available
+    cached_projects = session.get("reporter_projects")
+    last_sync = session.get("reporter_projects_sync_at")
+    
+    if cached_projects is not None:
+        return JiraProjectsResponse(
+            projects=cached_projects,
+            total=len(cached_projects),
+            lastSyncAt=last_sync,
+        )
+    
+    # If not cached, trigger a sync
+    return await sync_reporter_projects_endpoint(request, response)
+
+
+@router.post("/projects/sync", response_model=JiraProjectsResponse)
+async def sync_reporter_projects_endpoint(
+    request: Request, response: Response
+) -> JiraProjectsResponse:
+    """Manually trigger sync of reporter's projects."""
+    sid = _ensure_sid(request, response)
+    session = get_session(sid) or {}
+    _require_logged_in(session)
+    
+    # Clear temporarily hidden projects on manual refresh
+    clear_temporary_hidden(session)
+    
+    # Get all active Jira instances
+    tbc = session.get("tokens_by_cloud") or {}
+    cloud_ids = session.get("cloud_ids") or []
+    
+    if not cloud_ids:
+        # Return empty list if no instances connected
+        session["reporter_projects"] = []
+        session["reporter_projects_sync_at"] = datetime.utcnow().isoformat()
+        set_session(sid, session)
+        return JiraProjectsResponse(
+            projects=[],
+            total=0,
+            lastSyncAt=session["reporter_projects_sync_at"],
+        )
+    
+    # Create clients for all active instances
+    clients = []
+    for cloud_id in cloud_ids:
+        entry = tbc.get(cloud_id)
+        if entry and entry.get("access_token"):
+            client = JiraClient(
+                access_token=entry["access_token"],
+                cloud_id=cloud_id,
+            )
+            clients.append((cloud_id, client))
+    
+    # Get existing hidden projects
+    hidden = get_hidden_projects_state(session)
+    
+    try:
+        # Sync projects
+        projects = await sync_reporter_projects(clients, hidden)
+        
+        # Filter out hidden projects from the response
+        visible_projects = [
+            p for p in projects 
+            if p.visibility.value == "visible"
+        ]
+        
+        # Store in session
+        # Convert to dict for JSON serialization
+        session["reporter_projects"] = [p.model_dump() for p in visible_projects]
+        session["reporter_projects_sync_at"] = datetime.utcnow().isoformat()
+        set_session(sid, session)
+        
+        return JiraProjectsResponse(
+            projects=visible_projects,
+            total=len(visible_projects),
+            lastSyncAt=session["reporter_projects_sync_at"],
+        )
+    except Exception as e:
+        raise HTTPException(502, f"Erreur lors de la synchronisation: {str(e)}")
+    finally:
+        # Close all clients
+        for _, client in clients:
+            await client.aclose()
+
+
+@router.post("/projects/{project_key}/hide")
+async def hide_project_endpoint(
+    request: Request,
+    response: Response,
+    project_key: str,
+    permanent: bool = False,
+) -> Dict[str, Any]:
+    """Hide a project from the reporter's project list.
+    
+    Args:
+        project_key: The project key to hide
+        permanent: If True, hide permanently (survives manual refresh).
+                  If False, hide temporarily (cleared on manual refresh).
+    """
+    sid = _ensure_sid(request, response)
+    session = get_session(sid) or {}
+    _require_logged_in(session)
+    
+    hide_project(session, project_key, permanent)
+    
+    # Update cached projects list
+    cached_projects = session.get("reporter_projects") or []
+    updated_projects = [
+        p for p in cached_projects 
+        if p.get("projectKey") != project_key
+    ]
+    session["reporter_projects"] = updated_projects
+    
+    set_session(sid, session)
+    
+    return {
+        "ok": True,
+        "projectKey": project_key,
+        "hidden": True,
+        "permanent": permanent,
+    }
+
+
+@router.post("/projects/{project_key}/unhide")
+async def unhide_project_endpoint(
+    request: Request, response: Response, project_key: str
+) -> Dict[str, Any]:
+    """Unhide a previously hidden project."""
+    sid = _ensure_sid(request, response)
+    session = get_session(sid) or {}
+    _require_logged_in(session)
+    
+    unhide_project(session, project_key)
+    set_session(sid, session)
+    
+    # Trigger a sync to get the project back
+    await sync_reporter_projects_endpoint(request, response)
+    
+    return {
+        "ok": True,
+        "projectKey": project_key,
+        "hidden": False,
     }
