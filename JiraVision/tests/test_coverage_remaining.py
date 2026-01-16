@@ -59,6 +59,8 @@ def test_settings_validators_raise_on_invalid():
 
 
 def test_get_session_handles_invalid_json_and_refresh_ttl(monkeypatch):
+    core_redis._redis_available = True
+    core_redis._redis_warned = False
     # invalid json -> returns None
     monkeypatch.setattr(
         core_redis,
