@@ -34,15 +34,7 @@ def _redirect_uri(request: Request) -> str:
     """
     env_uri = getattr(settings, "atlassian_redirect_uri", None)
     if env_uri:
-        try:
-            from urllib.parse import urlparse
-
-            env_host = urlparse(env_uri).netloc
-            req_host = request.url.netloc
-            if env_host and req_host and env_host == req_host:
-                return env_uri
-        except Exception:
-            return env_uri
+        return env_uri
     # fallback : construire l'URL absolue pour la route `oauth_callback`
     return str(request.url_for("oauth_callback"))
 
