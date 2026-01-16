@@ -144,6 +144,17 @@ def test_oauth_callback_success(monkeypatch):
 
     monkeypatch.setattr("app.routes.auth._get_accessible_resources", fake_accessible)
 
+    # stub user info fetch
+    async def fake_get_user_info(token, cloud_id):
+        return {
+            "accountId": "user123",
+            "displayName": "Test User",
+            "emailAddress": "test@example.com",
+            "avatarUrls": {"48x48": "https://avatar.url"},
+        }
+
+    monkeypatch.setattr("app.routes.auth._get_user_info", fake_get_user_info)
+
     captured = {}
 
     def fake_set_session(sid, sess):
@@ -155,6 +166,8 @@ def test_oauth_callback_success(monkeypatch):
     assert r.status_code in (307, 302)
     assert captured["sess"]["tokens_by_cloud"]["c1"]["access_token"] == "atok"
     assert captured["sess"]["active_cloud_id"] == "c1"
+    assert captured["sess"]["user_info"]["accountId"] == "user123"
+    assert captured["sess"]["user_info"]["displayName"] == "Test User"
 
 
 def test_oauth_callback_bad_state(monkeypatch):

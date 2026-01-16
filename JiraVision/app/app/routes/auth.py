@@ -13,6 +13,7 @@ from itsdangerous import BadSignature
 from app.core.config import settings
 from app.core.redis import get_session, set_session
 from app.auth.session_store import ensure_session, destroy_session, state_serializer
+from app.clients.jira import JiraClient
 
 router = APIRouter(tags=["auth"])
 
@@ -69,6 +70,25 @@ def _pick_jira_resources(resources: List[Dict[str, Any]]) -> List[Dict[str, Any]
     return jira
 
 
+async def _get_user_info(access_token: str, cloud_id: str) -> Optional[Dict[str, Any]]:
+    """Fetch user information from Jira /myself endpoint.
+    
+    Returns user info dict on success, None if it fails (non-critical).
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        client = JiraClient(access_token=access_token, cloud_id=cloud_id, timeout=30)
+        user_info = await client.get_current_user()
+        await client.aclose()
+        logger.info("Successfully fetched user info: accountId=%s", user_info.get("accountId"))
+        return cast(Dict[str, Any], user_info)
+    except Exception as e:
+        logger.warning("Failed to fetch user info from /myself: %s", str(e))
+        return None
+
+
 def _expected_state_from_cookie(request: Request) -> Optional[str]:
     raw = request.cookies.get("oauth_state")
     if not raw:
@@ -77,6 +97,7 @@ def _expected_state_from_cookie(request: Request) -> Optional[str]:
         return cast(Optional[str], state_serializer.loads(raw))
     except BadSignature:
         return None
+
 
 
 @router.get("/login")
@@ -202,6 +223,20 @@ async def oauth_callback(
 
     active_cid = session["active_cloud_id"]
     active_entry = session["tokens_by_cloud"][active_cid]
+
+    # Fetch user information from Jira /myself endpoint (US#12)
+    user_info = await _get_user_info(access_token, active_cid)
+    if user_info:
+        session["user_info"] = {
+            "accountId": user_info.get("accountId"),
+            "displayName": user_info.get("displayName"),
+            "emailAddress": user_info.get("emailAddress"),
+            "avatarUrls": user_info.get("avatarUrls"),
+        }
+        logging.getLogger(__name__).info(
+            "User info stored in session: accountId=%s", 
+            user_info.get("accountId")
+        )
 
     # compat / confort (à garder tant que le reste du code l'utilise)
     session["access_token"] = active_entry["access_token"]
