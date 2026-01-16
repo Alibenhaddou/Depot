@@ -34,8 +34,9 @@ def _redirect_uri(request: Request) -> str:
     Priorité : variable d'env `ATLASSIAN_REDIRECT_URI` si définie, sinon construction
     depuis l'objet `request` (utile dans des environnements dynamiques type GitLab).
     """
-    if getattr(settings, "atlassian_redirect_uri", None):
-        return settings.atlassian_redirect_uri
+    env_uri = getattr(settings, "atlassian_redirect_uri", None)
+    if env_uri:
+        return env_uri
     # fallback : construire l'URL absolue pour la route `oauth_callback`
     return str(request.url_for("oauth_callback"))
 
@@ -102,6 +103,7 @@ async def login(request: Request) -> RedirectResponse:
 
     session = get_session(sid) or {}
     session["state"] = state
+    session["redirect_uri"] = params["redirect_uri"]
     set_session(sid, session)
 
     resp.set_cookie(
@@ -133,12 +135,13 @@ async def oauth_callback(
     if not code or not state or not expected_state or state != expected_state:
         raise HTTPException(400, "State invalide ou code manquant")
 
+    redirect_uri = session.get("redirect_uri") or _redirect_uri(request)
     payload = {
         "grant_type": "authorization_code",
         "client_id": settings.atlassian_client_id,
         "client_secret": settings.atlassian_client_secret,
         "code": code,
-        "redirect_uri": _redirect_uri(request),
+        "redirect_uri": redirect_uri,
     }
 
     async with httpx.AsyncClient(timeout=30) as client:
