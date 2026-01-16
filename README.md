@@ -87,7 +87,14 @@ client.cookies.set("oauth_state", "xyz")
 res = client.get("/some/path")
 ```
 
+## Documentation
+
+- **[Workflow Projet](docs/epics/epic-10/workflow.md)** : Documentation complète du workflow pour US, bugs, tests, branches et PRs
+- **[Contributing](CONTRIBUTING.md)** : Règles de contribution et quality gates
+- **[Services](docs/services/README.md)** : Documentation des services (API, AI, Redis, Ollama)
+
 ## Contribution
 
 - Suivez la convention de style (Black), vérifiez `flake8` et `mypy` avant d'ouvrir une PR.
+- Consultez le [workflow projet](docs/epics/epic-10/workflow.md) pour le processus complet de développement.
 - Les workflows GitHub Actions exécutent les tests et génèrent la couverture automatiquement.
