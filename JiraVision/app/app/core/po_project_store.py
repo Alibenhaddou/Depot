@@ -118,6 +118,16 @@ def list_projects_for_user(jira_account_id: str) -> List[Dict[str, Any]]:
     )
 
 
+def get_project_for_user(
+    jira_account_id: str,
+    *,
+    project_key: str,
+    cloud_id: Optional[str],
+) -> Optional[Dict[str, Any]]:
+    projects = _load_projects(jira_account_id)
+    return projects.get(_project_id(project_key, cloud_id))
+
+
 def upsert_project_for_user(
     jira_account_id: str,
     *,
@@ -127,6 +137,8 @@ def upsert_project_for_user(
     cloud_id: Optional[str] = None,
     mask_type: str = "none",
     masked_at: Optional[int] = None,
+    is_active: Optional[bool] = None,
+    inactive_at: Optional[int] = None,
     now: Optional[int] = None,
 ) -> Dict[str, Any]:
     if source not in _VALID_SOURCES:
@@ -146,6 +158,13 @@ def upsert_project_for_user(
     project["project_name"] = project_name
     project["source"] = source
     project["updated_at"] = now_ts
+
+    if is_active is not None:
+        project["is_active"] = is_active
+        if not is_active:
+            project["inactive_at"] = inactive_at if inactive_at is not None else now_ts
+        else:
+            project["inactive_at"] = None
 
     if mask_type == "none":
         project["mask_type"] = "none"
