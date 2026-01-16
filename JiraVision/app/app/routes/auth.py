@@ -109,6 +109,7 @@ async def login(request: Request) -> RedirectResponse:
 
     session = get_session(sid) or {}
     session["state"] = state
+    session["redirect_uri"] = params["redirect_uri"]
     set_session(sid, session)
 
     resp.set_cookie(
@@ -140,12 +141,13 @@ async def oauth_callback(
     if not code or not state or not expected_state or state != expected_state:
         raise HTTPException(400, "State invalide ou code manquant")
 
+    redirect_uri = session.get("redirect_uri") or _redirect_uri(request)
     payload = {
         "grant_type": "authorization_code",
         "client_id": settings.atlassian_client_id,
         "client_secret": settings.atlassian_client_secret,
         "code": code,
-        "redirect_uri": _redirect_uri(request),
+        "redirect_uri": redirect_uri,
     }
 
     async with httpx.AsyncClient(timeout=30) as client:
