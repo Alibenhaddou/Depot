@@ -1,10 +1,14 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pathlib import Path
 from pydantic import field_validator
 from typing import Any, Literal
 
 
+BASE_DIR = Path(__file__).resolve().parents[3]
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=str(BASE_DIR / ".env"), extra="ignore")
 
     atlassian_client_id: str
     atlassian_client_secret: str
