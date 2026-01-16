@@ -29,11 +29,13 @@ OAUTH_STATE_MAX_AGE = 60 * 10  # 10 minutes
 def _redirect_uri(request: Request) -> str:
     """Retourne l'URI de redirection à utiliser pour OAuth.
 
-    Priorité : variable d'env `ATLASSIAN_REDIRECT_URI` si définie, sinon construction
-    depuis l'objet `request` (utile dans des environnements dynamiques type GitLab).
+    Priorité : variable d'env `ATLASSIAN_REDIRECT_URI` si définie et non vide, 
+    sinon construction depuis l'objet `request` (utile dans des environnements 
+    dynamiques type Codespace, GitLab, etc.).
     """
-    if getattr(settings, "atlassian_redirect_uri", None):
-        return settings.atlassian_redirect_uri
+    redirect_uri = getattr(settings, "atlassian_redirect_uri", None)
+    if redirect_uri:
+        return redirect_uri
     # fallback : construire l'URL absolue pour la route `oauth_callback`
     return str(request.url_for("oauth_callback"))
 
