@@ -82,13 +82,17 @@ Microservice dédié au traitement IA de JiraVision : proxy LLM, auth inter-serv
 ### `/ai/analyze-issue/stream`
 
 Réponse **SSE** avec events :
-- `log`
-- `result`
+- `log` (progression)
+- `error` (JSON avec `code` et `message`)
+- `result` (JSON avec `text`)
 
 Exemple :
 ```
 event: log
 data: "Début de l'analyse"
+
+event: error
+data: {"code":502,"message":"LLM indisponible"}
 
 event: result
 data: {"text":"Analyse progressive - résultat exemple"}
