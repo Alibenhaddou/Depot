@@ -7,6 +7,7 @@ Ajouter un panel UI permettant au PO de visualiser et gérer ses projets.
 - Cartes/onglets projets en haut (filtrées par instances actives).
 - Zone de détail pour le projet sélectionné.
 - Actions: rafraîchir, ajouter, masquer temporaire/définitif.
+- Chargement initial automatique à l’ouverture du panel (GET /po/projects).
 - Liste des projets inactifs avec ré‑ajout manuel.
 - Compteur de projets masqués calculé à l’affichage.
 

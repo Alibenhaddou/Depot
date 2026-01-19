@@ -48,6 +48,15 @@ Service principal de JiraVision exposant l’API métier, la UI POC, l’OAuth A
 | GET | `/ui` | UI POC (redirige si non connecté) | Cookie session |
 | GET | `/ui/state` | État UI (logged_in, debug links) | Cookie session |
 
+### Projets PO
+
+| Méthode | Endpoint | Description | Auth |
+|---|---|---|---|
+| GET | `/po/projects` | Liste projets actifs/inactifs + `last_synced_at` (chargement initial UI) | Cookie session |
+| POST | `/po/projects` | Ajout manuel d’un projet actif | Cookie session |
+| DELETE | `/po/projects/{project_key}` | Masquage d’un projet (temporaire/définitif) | Cookie session |
+| POST | `/po/projects/refresh` | Synchronisation Jira et mise à jour actifs/inactifs | Cookie session |
+
 ### Jira
 
 | Méthode | Endpoint | Description | Auth |
@@ -75,6 +84,17 @@ Service principal de JiraVision exposant l’API métier, la UI POC, l’OAuth A
 | GET | `/debug/routes` | Liste de routes debug | ENABLE_DEBUG_ROUTES=true |
 
 ## Contrats principaux
+
+### `/po/projects`
+
+**Réponse (extrait)**
+```json
+{
+  "projects": [{"project_key":"ABC","project_name":"Alpha","cloud_id":null,"mask_type":"none"}],
+  "inactive_projects": [{"project_key":"DEF","project_name":"Delta","cloud_id":"<id>"}],
+  "last_synced_at": 1700000000
+}
+```
 
 ### `/ai/summarize-jql`
 
@@ -164,4 +184,5 @@ data: {"text":"..."}
 
 | Date | Version | Description | Auteur | Référence |
 |------|---------|-------------|--------|-----------|
+| 2026-01-19 | doc | Ajout des endpoints Projets PO + chargement initial UI (GET /po/projects). | | |
 | 2026-01-16 | initial | Documentation fonctionnelle complète du service API. | | |
