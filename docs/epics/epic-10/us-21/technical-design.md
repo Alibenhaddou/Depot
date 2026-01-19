@@ -61,6 +61,18 @@ Rendre le panel Projets PO plus lisible et compréhensible, tout en restant conf
 - Conserver focus visible et navigation clavier.
 - Layout recommandé : colonne gauche compacte pour la liste (Actifs par défaut), panneau droit dédié au détail/étapes futures (epics à venir). La liste ne doit pas occuper plus que nécessaire ; le bloc Inactifs reste replié, les Masqués sont consultables via filtre/drawer.
 
+### Accessibilité / ARIA (à implémenter/tester)
+- Filtres (pills) : boutons avec `aria-pressed` et `aria-current="true"` pour le filtre actif, focus visible.
+- Bloc repliable Inactifs : bouton/toggle avec `aria-expanded` + `aria-controls` vers le contenu ; fermé par défaut.
+- Annonce filtre : sur changement de filtre, message dans la zone `aria-live` (ex: « Filtre Actifs appliqué, 5 projets »).
+- Actions « Masquer » : focusables, activables Enter/Espace, annonce du résultat (ex: « Projet ABC masqué pour cette session »).
+- Roving tabindex des projets conservé, ordre de tab cohérent avec les nouveaux contrôles.
+
+### États vides / erreurs
+- Aucune instance Jira sélectionnée : afficher une aide + CTA pour sélectionner une instance.
+- Erreur Jira/synchro : message d’erreur en zone de statut, CTA « Réessayer » ; navigation clavier préservée.
+- Aucun projet actif : CTA « Synchroniser Jira » + message clair.
+
 ## Contraintes RGAA
 - Contrastes conformes (WCAG AA minimum).
 - Rôles ARIA et libellés explicites conservés.
@@ -73,3 +85,6 @@ Rendre le panel Projets PO plus lisible et compréhensible, tout en restant conf
 - La section « Projets détectés sans activité » est repliable et expliquée.
 - Les libellés proposés sont appliqués.
 - Les accents colorés restent sobres et conformes RGAA.
+- Les filtres et le bloc repliable exposent les attributs ARIA mentionnés et sont utilisables au clavier (Tab, Enter/Espace).
+- Un état vide et un état d’erreur Jira sont gérés avec messages et CTA adaptés.
+- Le tri respecte la règle définie (stories/études non terminées/annulées assignées à l’utilisateur, puis alpha).
