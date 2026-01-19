@@ -5,6 +5,8 @@ from pathlib import Path
 import time
 
 from fastapi import FastAPI, Request, Response
+import sys
+from datetime import datetime
 from fastapi.staticfiles import StaticFiles
 
 from app.routes.auth import router as auth_router
@@ -73,6 +75,23 @@ def create_app() -> FastAPI:
     @app.get("/", include_in_schema=False)
     async def root() -> RedirectResponse:
         return RedirectResponse("/ui")
+
+    @app.get("/version")
+    async def version():
+        ver = os.getenv("APP_VERSION")
+        if not ver:
+            try:
+                repo_root = Path(__file__).resolve().parents[2]
+                ver = (repo_root / "VERSION").read_text().strip()
+            except Exception:
+                ver = "dev"
+        build_date = os.getenv("APP_BUILD_DATE") or datetime.utcnow().isoformat() + "Z"
+        return {
+            "service": "api",
+            "version": ver,
+            "python_version": sys.version.split()[0],
+            "build_date": build_date,
+        }
 
     app_dir = Path(__file__).resolve().parent
 

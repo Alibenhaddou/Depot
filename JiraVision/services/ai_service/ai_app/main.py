@@ -1,7 +1,11 @@
 import time
 
 from fastapi import FastAPI, Request
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse
+import os
+import sys
+from pathlib import Path
+from datetime import datetime
 from starlette.responses import StreamingResponse
 from prometheus_client import (
     generate_latest,
@@ -55,6 +59,23 @@ async def ready():
 async def metrics():
     data = generate_latest(registry)
     return StreamingResponse(iter([data]), media_type=CONTENT_TYPE_LATEST)
+
+@app.get("/version")
+async def version():
+    ver = os.getenv("APP_VERSION")
+    if not ver:
+        try:
+            repo_root = Path(__file__).resolve().parents[3]
+            ver = (repo_root / "VERSION").read_text().strip()
+        except Exception:
+            ver = "dev"
+    build_date = os.getenv("APP_BUILD_DATE") or datetime.utcnow().isoformat() + "Z"
+    return JSONResponse({
+        "service": "ai-service",
+        "version": ver,
+        "python_version": sys.version.split()[0],
+        "build_date": build_date,
+    })
 
 # Include AI routes
 app.include_router(ai_router)
