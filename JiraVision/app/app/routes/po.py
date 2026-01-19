@@ -165,13 +165,22 @@ async def mask_project(
     if req.mask_type not in ("temporaire", "definitif"):
         raise HTTPException(400, "mask_type invalide")
     
+    # Find the project to get its cloud_id
+    all_projects = po_project_store.list_projects_for_user(jira_account_id)
+    target_project = None
+    for proj in all_projects:
+        if proj.get("project_key") == project_key:
+            target_project = proj
+            break
+    
+    if not target_project:
+        raise HTTPException(404, "Projet introuvable")
+    
     project = po_project_store.set_project_mask(
         jira_account_id,
-        project_key,
+        project_key=project_key,
+        cloud_id=target_project.get("cloud_id"),
         mask_type=req.mask_type
     )
-    
-    if not project:
-        raise HTTPException(404, "Projet introuvable")
     
     return project
