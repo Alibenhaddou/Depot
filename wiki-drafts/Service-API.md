@@ -48,13 +48,21 @@ Service principal de JiraVision exposant l’API métier, la UI POC, l’OAuth A
 | GET | `/ui` | UI POC (redirige si non connecté) | Cookie session |
 | GET | `/ui/state` | État UI (logged_in, debug links) | Cookie session |
 
+**Conformité RGAA (Projets PO)** :
+- Rôles ARIA : `tablist`, `tab`, `tabpanel` pour la navigation par onglets.
+- Roving `tabindex` : un seul onglet focusable (tabindex="0"), les autres en tabindex="-1".
+- Navigation clavier : flèches gauche/droite pour parcourir, Enter/Espace pour activer.
+- `aria-live="polite"` avec région `role="status"` pour annonces accessibles.
+- Focus logique : le panneau de détail reçoit le focus uniquement après activation clavier (pas après clic souris).
+- `aria-labelledby` dynamique : le tabpanel référence l'onglet actif via son id.
+
 ### Projets PO
 
 | Méthode | Endpoint | Description | Auth |
 |---|---|---|---|
 | GET | `/po/projects` | Liste projets actifs/inactifs + `last_synced_at` (chargement initial UI) | Cookie session |
 | POST | `/po/projects` | Ajout manuel d’un projet actif | Cookie session |
-| DELETE | `/po/projects/{project_key}` | Masquage d’un projet (temporaire/définitif) | Cookie session |
+| DELETE | `/po/projects/{project_key}?cloud_id=<id>` | Masquage d'un projet (temporaire/définitif). Query param `cloud_id` optionnel pour désambiguïser en multi-instance. | Cookie session |
 | POST | `/po/projects/refresh` | Synchronisation Jira et mise à jour actifs/inactifs | Cookie session |
 
 ### Jira
@@ -144,14 +152,17 @@ Service principal de JiraVision exposant l’API métier, la UI POC, l’OAuth A
 ### `/ai/analyze-issue/stream`
 
 Réponse **SSE** avec events :
-- `log` (progression)
-- `error` (code + message)
-- `result` (résultat final)
+- `log` (progression textuelle)
+- `error` (JSON avec `code` et `message` en cas d'erreur)
+- `result` (résultat final JSON avec `text`)
 
 Exemple (format SSE) :
 ```
 event: log
 data: "Début de l'analyse"
+
+event: error
+data: {"code":404,"message":"Ticket introuvable"}
 
 event: result
 data: {"text":"..."}
@@ -183,6 +194,5 @@ data: {"text":"..."}
 ## Journal des évolutions
 
 | Date | Version | Description | Auteur | Référence |
-|------|---------|-------------|--------|-----------|
-| 2026-01-19 | doc | Ajout des endpoints Projets PO + chargement initial UI (GET /po/projects). | | |
+|------|---------|-------------|--------|-----------|| 2026-01-19 | US-20 | Conformité RGAA panel Projets PO : roving tabindex, navigation clavier (flèches + Enter/Espace), tabpanel avec aria-labelledby, aria-live fiabilisé, focus logique clavier uniquement. Désambiguïsation DELETE avec cloud_id en query param. | | PR #42 || 2026-01-19 | doc | Ajout des endpoints Projets PO + chargement initial UI (GET /po/projects). | | |
 | 2026-01-16 | initial | Documentation fonctionnelle complète du service API. | | |
