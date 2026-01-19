@@ -127,6 +127,9 @@ class JiraClient:
                 return await self._request("POST", "/search", json_body=body)
             raise
 
+    async def get_myself(self) -> Any:
+        return await self._request("GET", "/myself")
+
 
 def select_cloud_id(session: Dict[str, Any], request: Request) -> str:
     """
