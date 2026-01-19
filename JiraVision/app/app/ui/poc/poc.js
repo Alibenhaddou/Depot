@@ -5,11 +5,22 @@
   /* utils                                                               */
   /* ------------------------------------------------------------------ */
 
+  let announceTimeoutId;
   const announce = (msg) => {
     const node = $("panelStatus");
-    if (node) node.textContent = msg;
     const visible = $("panelStatusVisible");
-    if (visible) visible.textContent = msg;
+
+    if (announceTimeoutId !== undefined) {
+      window.clearTimeout(announceTimeoutId);
+    }
+
+    if (node) node.textContent = "";
+    if (visible) visible.textContent = "";
+
+    announceTimeoutId = window.setTimeout(() => {
+      if (node) node.textContent = msg;
+      if (visible) visible.textContent = msg;
+    }, 50);
   };
 
   const tryJson = (text) => { try { return JSON.parse(text); } catch { return null; } };
@@ -108,6 +119,7 @@
     selectedId: null,
     maskedCount: 0,
     lastSelectedId: null,
+    lastInteractionWasKeyboard: false,
   };
 
   function setView(hasInstances) {
@@ -193,28 +205,45 @@
       for (let i = 0; i < visibleProjects.length; i += 1) {
         const p = visibleProjects[i];
         const pid = projectId(p);
+        const isSelected = pid === projectState.selectedId;
         const btn = el("button", {
           type: "button",
-          class: `project-tab${pid === projectState.selectedId ? " active" : ""}`,
+          class: `project-tab${isSelected ? " active" : ""}`,
           text: p.project_key,
           role: "tab",
-          "aria-selected": pid === projectState.selectedId ? "true" : "false",
+          "aria-selected": isSelected ? "true" : "false",
           "aria-controls": "projectDetail",
           id: `project-tab-${pid}`,
+          tabindex: isSelected ? "0" : "-1",
         });
         btn.addEventListener("click", () => {
           projectState.selectedId = pid;
+          projectState.lastInteractionWasKeyboard = false;
           renderProjects();
         });
         btn.addEventListener("keydown", (e) => {
+          const focusTab = (idx) => {
+            tabButtons.forEach((b, j) => {
+              b.tabIndex = j === idx ? 0 : -1;
+            });
+            tabButtons[idx]?.focus();
+          };
+
           if (e.key === "ArrowRight") {
             e.preventDefault();
             const next = tabButtons[i + 1] || tabButtons[0];
-            next?.focus();
+            const idx = tabButtons.indexOf(next);
+            if (idx >= 0) focusTab(idx);
           } else if (e.key === "ArrowLeft") {
             e.preventDefault();
             const prev = tabButtons[i - 1] || tabButtons[tabButtons.length - 1];
-            prev?.focus();
+            const idx = tabButtons.indexOf(prev);
+            if (idx >= 0) focusTab(idx);
+          } else if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+            e.preventDefault();
+            projectState.selectedId = pid;
+            projectState.lastInteractionWasKeyboard = true;
+            renderProjects();
           }
         });
         tabs.appendChild(btn);
@@ -224,11 +253,14 @@
 
     const selected = visibleProjects.find((p) => projectId(p) === projectState.selectedId);
     detail.replaceChildren();
+    detail.setAttribute("aria-labelledby", "");
     if (!selected) {
       detail.appendChild(el("div", { class: "muted", text: "Sélectionne un projet." }));
       if (btnMaskTemp) btnMaskTemp.disabled = true;
       if (btnMaskDef) btnMaskDef.disabled = true;
     } else {
+      const selectedTabId = `project-tab-${projectId(selected)}`;
+      detail.setAttribute("aria-labelledby", selectedTabId);
       detail.appendChild(el("div", { text: `${selected.project_name || selected.project_key}` }));
       detail.appendChild(el("div", { class: "small muted", text: `Clé: ${selected.project_key}` }));
       detail.appendChild(el("div", { class: "small muted", text: `Source: ${selected.source || "?"}` }));
@@ -238,9 +270,16 @@
       if (btnMaskDef) btnMaskDef.disabled = false;
     }
 
-    const shouldFocusDetail = projectState.selectedId && projectState.selectedId !== projectState.lastSelectedId;
+    const shouldFocusDetail = projectState.lastInteractionWasKeyboard
+      && projectState.selectedId
+      && projectState.selectedId !== projectState.lastSelectedId;
     projectState.lastSelectedId = projectState.selectedId;
     if (shouldFocusDetail && detail) detail.focus();
+
+    const activeTab = tabButtons.find((b) => b.getAttribute("aria-selected") === "true");
+    if (projectState.lastInteractionWasKeyboard && !shouldFocusDetail && activeTab) activeTab.focus();
+
+    projectState.lastInteractionWasKeyboard = false;
 
     inactiveList.replaceChildren();
     if (!visibleInactive.length) {
@@ -302,6 +341,7 @@
 
     projectState.projects = r.json.projects || [];
     projectState.inactive = r.json.inactive_projects || [];
+    projectState.lastSyncedAt = r.json.last_synced_at || null;
     renderProjects();
     announce("Projets rafraîchis.");
   }
@@ -355,7 +395,8 @@
   async function maskSelected(maskType) {
     const selected = projectState.projects.find((p) => projectId(p) === projectState.selectedId);
     if (!selected) return;
-    const r = await fetchJson(`/po/projects/${encodeURIComponent(selected.project_key)}`,
+    const url = `/po/projects/${encodeURIComponent(selected.project_key)}${selected.cloud_id ? `?cloud_id=${encodeURIComponent(selected.cloud_id)}` : ""}`;
+    const r = await fetchJson(url,
       {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
