@@ -93,6 +93,13 @@
 
   const activeCloudIds = new Set();
   let knownSites = [];
+  let projectState = {
+    projects: [],
+    inactive: [],
+    lastSyncedAt: null,
+    selectedId: null,
+    maskedCount: 0,
+  };
 
   function setView(hasInstances) {
     const appContent = $("appContent");
@@ -279,6 +286,203 @@
     if (activeCloudIds.has(id)) activeCloudIds.delete(id);
     else activeCloudIds.add(id);
     renderInstanceList(knownSites);
+    renderProjects();
+  }
+
+  function projectId(p) {
+    return `${p.cloud_id || "default"}:${p.project_key}`;
+  }
+
+  function formatTs(ts) {
+    if (!ts) return "";
+    const d = new Date(Number(ts) * 1000);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleString("fr-FR");
+  }
+
+  function isVisibleForInstances(p) {
+    if (!p.cloud_id) return true;
+    if (!activeCloudIds.size) return true;
+    return activeCloudIds.has(p.cloud_id);
+  }
+
+  function splitMasked(items) {
+    let masked = 0;
+    const visible = [];
+    for (const p of items) {
+      if (!isVisibleForInstances(p)) continue;
+      if (p.mask_type && p.mask_type !== "none") {
+        masked += 1;
+        continue;
+      }
+      visible.push(p);
+    }
+    return { visible, masked };
+  }
+
+  function renderProjects() {
+    const tabs = $("projectTabs");
+    const detail = $("projectDetail");
+    const inactiveList = $("inactiveList");
+    const maskedCount = $("maskedCount");
+    const lastSync = $("lastSync");
+    const btnMaskTemp = $("btnMaskTemp");
+    const btnMaskDef = $("btnMaskDef");
+
+    if (!tabs || !detail || !inactiveList || !maskedCount || !lastSync) return;
+
+    const activeSplit = splitMasked(projectState.projects);
+    const inactiveSplit = splitMasked(projectState.inactive);
+    projectState.maskedCount = activeSplit.masked + inactiveSplit.masked;
+
+    const visibleProjects = activeSplit.visible;
+    const visibleInactive = inactiveSplit.visible;
+
+    if (!projectState.selectedId && visibleProjects.length) {
+      projectState.selectedId = projectId(visibleProjects[0]);
+    }
+
+    tabs.replaceChildren();
+    if (!visibleProjects.length) {
+      tabs.appendChild(el("div", { class: "muted small", text: "Aucun projet actif" }));
+    } else {
+      for (const p of visibleProjects) {
+        const pid = projectId(p);
+        const btn = el("button", {
+          type: "button",
+          class: `project-tab${pid === projectState.selectedId ? " active" : ""}`,
+          text: p.project_key,
+        });
+        btn.addEventListener("click", () => {
+          projectState.selectedId = pid;
+          renderProjects();
+        });
+        tabs.appendChild(btn);
+      }
+    }
+
+    const selected = visibleProjects.find((p) => projectId(p) === projectState.selectedId);
+    detail.replaceChildren();
+    if (!selected) {
+      detail.appendChild(el("div", { class: "muted", text: "Sélectionne un projet." }));
+      if (btnMaskTemp) btnMaskTemp.disabled = true;
+      if (btnMaskDef) btnMaskDef.disabled = true;
+    } else {
+      detail.appendChild(el("div", { text: `${selected.project_name || selected.project_key}` }));
+      detail.appendChild(el("div", { class: "small muted", text: `Clé: ${selected.project_key}` }));
+      detail.appendChild(el("div", { class: "small muted", text: `Source: ${selected.source || "?"}` }));
+      detail.appendChild(el("div", { class: "small muted", text: `Instance: ${selected.cloud_id || "default"}` }));
+      detail.appendChild(el("div", { class: "small muted", text: `Actif: ${selected.is_active === false ? "non" : "oui"}` }));
+      if (btnMaskTemp) btnMaskTemp.disabled = false;
+      if (btnMaskDef) btnMaskDef.disabled = false;
+    }
+
+    inactiveList.replaceChildren();
+    if (!visibleInactive.length) {
+      inactiveList.appendChild(el("div", { class: "muted small", text: "Aucun projet inactif" }));
+    } else {
+      for (const p of visibleInactive) {
+        const item = el("div", { class: "inactive-item" });
+        const meta = el("div", { class: "meta" }, [
+          el("strong", { text: p.project_key }),
+          el("span", { class: "muted", text: p.project_name || p.project_key }),
+          el("span", { class: "muted", text: `Instance: ${p.cloud_id || "default"}` }),
+        ]);
+        const btn = el("button", { type: "button", text: "Ajouter" });
+        btn.addEventListener("click", () => addInactiveProject(p));
+        item.appendChild(meta);
+        item.appendChild(btn);
+        inactiveList.appendChild(item);
+      }
+    }
+
+    maskedCount.textContent = projectState.maskedCount
+      ? `Projets masqués: ${projectState.maskedCount}`
+      : "";
+    lastSync.textContent = projectState.lastSyncedAt
+      ? `Dernier refresh: ${formatTs(projectState.lastSyncedAt)}`
+      : "";
+  }
+
+  async function loadProjects() {
+    const r = await fetchJson("/po/projects");
+    if (r.status === 401) {
+      window.location.href = "/auth";
+      return;
+    }
+    if (!r.ok || !r.json) return;
+
+    projectState.projects = r.json.projects || [];
+    projectState.inactive = r.json.inactive_projects || [];
+    projectState.lastSyncedAt = r.json.last_synced_at || null;
+    renderProjects();
+  }
+
+  async function refreshProjects() {
+    const resetBox = $("resetDefinitif");
+    const reset = Boolean(resetBox && resetBox.checked);
+    const r = await fetchJson("/po/projects/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reset_definitif: reset }),
+    });
+    if (!r.ok || !r.json) return;
+
+    projectState.projects = r.json.projects || [];
+    projectState.inactive = r.json.inactive_projects || [];
+    renderProjects();
+  }
+
+  async function addProject() {
+    const key = window.prompt("Clé projet (ex: ABC)");
+    if (!key) return;
+    const name = window.prompt("Nom du projet", key) || key;
+    const payload = {
+      project_key: key.trim(),
+      project_name: name.trim(),
+      source: "manual",
+      is_active: true,
+    };
+
+    const r = await fetchJson("/po/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) return;
+    await loadProjects();
+  }
+
+  async function addInactiveProject(p) {
+    const payload = {
+      project_key: p.project_key,
+      project_name: p.project_name || p.project_key,
+      source: "manual",
+      is_active: true,
+      cloud_id: p.cloud_id || null,
+    };
+
+    const r = await fetchJson("/po/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) return;
+    await loadProjects();
+  }
+
+  async function maskSelected(maskType) {
+    const selected = projectState.projects.find((p) => projectId(p) === projectState.selectedId);
+    if (!selected) return;
+    const r = await fetchJson(`/po/projects/${encodeURIComponent(selected.project_key)}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mask_type: maskType, cloud_id: selected.cloud_id || null }),
+      }
+    );
+    if (!r.ok) return;
+    await loadProjects();
   }
 
   async function streamSse(url, options, onEvent) {
@@ -353,6 +557,7 @@
 
     renderInstanceList(knownSites);
     setView(true);
+    loadProjects();
   }
 
   /* ------------------------------------------------------------------ */
@@ -575,16 +780,32 @@
     renderTopbar(s.json);
     refreshSites();
 
-    $("btnIssueQuick").addEventListener("click", () => fetchIssue("quick"));
-    $("btnIssueDetail").addEventListener("click", () => fetchIssue("detail"));
-    $("issue").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        fetchIssue("quick");
-      }
-    });
-    $("btnSearch").addEventListener("click", searchJql);
-    $("btnAi").addEventListener("click", aiSummary);
+    const btnRefresh = $("btnProjectsRefresh");
+    if (btnRefresh) btnRefresh.addEventListener("click", refreshProjects);
+    const btnAdd = $("btnProjectAdd");
+    if (btnAdd) btnAdd.addEventListener("click", addProject);
+    const btnMaskTemp = $("btnMaskTemp");
+    if (btnMaskTemp) btnMaskTemp.addEventListener("click", () => maskSelected("temporaire"));
+    const btnMaskDef = $("btnMaskDef");
+    if (btnMaskDef) btnMaskDef.addEventListener("click", () => maskSelected("definitif"));
+
+    const btnIssueQuick = $("btnIssueQuick");
+    if (btnIssueQuick) btnIssueQuick.addEventListener("click", () => fetchIssue("quick"));
+    const btnIssueDetail = $("btnIssueDetail");
+    if (btnIssueDetail) btnIssueDetail.addEventListener("click", () => fetchIssue("detail"));
+    const issueInput = $("issue");
+    if (issueInput) {
+      issueInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          fetchIssue("quick");
+        }
+      });
+    }
+    const btnSearch = $("btnSearch");
+    if (btnSearch) btnSearch.addEventListener("click", searchJql);
+    const btnAi = $("btnAi");
+    if (btnAi) btnAi.addEventListener("click", aiSummary);
   }
 
   window.addEventListener("DOMContentLoaded", () => {

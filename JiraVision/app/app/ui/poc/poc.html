@@ -23,6 +23,38 @@
           <div id="logoutArea" class="logout-area"></div>
         </div>
       </div>
+
+      <div class="app-grid">
+        <section class="panel panel-wide panel-projects">
+          <div class="panel-head">
+            <div class="panel-title">Projets PO</div>
+            <div class="panel-actions">
+              <label class="inline-check">
+                <input type="checkbox" id="resetDefinitif" />
+                Réintégrer masqués définitifs
+              </label>
+              <button id="btnProjectsRefresh" type="button">Rafraîchir</button>
+              <button id="btnProjectAdd" type="button">Ajouter</button>
+            </div>
+            <div class="small muted" id="maskedCount"></div>
+            <div class="small muted" id="lastSync"></div>
+          </div>
+          <div id="projectTabs" class="project-tabs"></div>
+          <div id="projectDetail" class="project-detail"></div>
+          <div class="project-actions">
+            <button id="btnMaskTemp" type="button" disabled>Masquer temporaire</button>
+            <button id="btnMaskDef" type="button" disabled>Masquer définitif</button>
+          </div>
+        </section>
+
+        <section class="panel panel-inactive">
+          <div class="panel-head">
+            <div class="panel-title">Projets inactifs</div>
+            <div class="small muted">Ré-ajout manuel</div>
+          </div>
+          <div id="inactiveList" class="inactive-list"></div>
+        </section>
+      </div>
     </section>
 
     <noscript>
