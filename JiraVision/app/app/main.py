@@ -12,6 +12,7 @@ from app.routes.auth_ui import router as auth_ui_router
 from app.routes.jira import router as jira_router
 from app.routes.ai import router as ai_router
 from app.routes.ui import router as ui_router  # version "choix 2" => prefix="/ui"
+from app.routes.po_projects import router as po_projects_router
 from app.routes.debug import router as debug_router
 from fastapi.responses import RedirectResponse
 from prometheus_client import (
@@ -95,6 +96,9 @@ def create_app() -> FastAPI:
 
     # Jira endpoints (issue/search/select/instances)
     app.include_router(jira_router)
+
+    # PO projects endpoints
+    app.include_router(po_projects_router)
 
     # AI endpoints
     app.include_router(ai_router)
