@@ -14,6 +14,14 @@ Rendre le panel Projets PO plus lisible et compréhensible, tout en restant conf
 - **Inactif** : état issu de la synchronisation Jira (backend). Ne change que sur synchro manuelle (« Synchroniser Jira »).
 - **Actif** : état par défaut après synchro ; peut passer à masqué via action utilisateur.
 
+### Règle de tri (priorisation)
+- Objectif : mettre en haut les projets les plus « chauds » pour l’utilisateur.
+- Critère principal : nombre de tickets **Story** ou **Étude** (non annulés, non terminés) **assignés à l’utilisateur**.
+   - Filtrer sur statuses non terminés / non annulés (exclure Done/Cancelled).
+   - Compter uniquement les issues affectées à l’utilisateur courant.
+- Tri décroissant sur ce volume ; à égalité : tri alphabétique sur `project_key`.
+- Application : tri côté frontend sur les données reçues, ou idéalement fourni déjà trié par le backend si le comptage est calculé lors de la synchro.
+
 1) **Chargement initial**
    - Message d’attente explicite pendant le chargement (ex: « Chargement de vos projets Jira… »).
    - Si aucun projet actif, CTA principal : **« Synchroniser Jira »**.
