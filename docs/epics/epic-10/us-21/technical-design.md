@@ -13,22 +13,20 @@ Rendre le panel Projets PO plus lisible et compréhensible, tout en restant conf
    - Message d’attente explicite pendant le chargement (ex: « Chargement de vos projets Jira… »).
    - Si aucun projet actif, CTA principal : **« Synchroniser Jira »**.
 
-2) **Liste principale unique**
-   - Remplacer l’affichage séparé par une liste « Mes projets » avec filtres :
-     - **Actifs** (par défaut)
-     - **Inactifs**
-     - **Masqués**
-   - Chaque projet affiche un badge de statut (Actif / Inactif / Masqué).
+2) **Liste principale (priorité Actifs)**
+   - Colonne gauche compacte « Mes projets » centrée sur les **Actifs** (filtre par défaut).
+   - Switch de filtre sous forme de pills / boutons discrets (Actifs / Inactifs / Masqués) avec `aria-pressed` et focus visible.
+   - Les **Masqués** restent accessibles via ce filtre (ou un mini tiroir repliable) pour ne pas occuper d’espace en permanence.
+   - Chaque projet affiche un badge de statut (Actif / Inactif / Masqué) avec les couleurs sobres définies.
 
 3) **Détail et actions contextuelles**
    - Les actions ne s’affichent que si un projet est sélectionné.
    - Regrouper les actions de masquage sous un menu « Masquer » (temporaire / définitif).
 
-4) **Projets inactifs**
-   - Remplacer la section fixe par un bloc repliable :
-     - Titre : « Projets détectés sans activité »
-     - Aide : « Inactif = pas d’epic active. Vous pouvez ré‑ajouter manuellement. »
-   - Bouton : **« Ré‑ajouter »** (et non « Ajouter ») pour réduire l’ambiguïté.
+4) **Projets inactifs (bloc discret)**
+   - Bloc repliable minimal (« Projets détectés sans activité ») qui prend peu d’espace ; fermé par défaut.
+   - Texte d’aide : « Inactif = pas d’epic active. Vous pouvez ré‑ajouter manuellement. »
+   - Bouton : **« Ré‑ajouter »** (au clic ouvre le flux d’ajout manuel) ; visible seulement quand on déplie le bloc.
 
 ## Micro‑copies / libellés
 - « Projets inactifs » → « Projets détectés sans activité »
@@ -43,6 +41,7 @@ Rendre le panel Projets PO plus lisible et compréhensible, tout en restant conf
   - Badge **Masqué** : bleu/gris doux (#EEF2F7, texte #314155)
 - CTA principal (Synchroniser Jira) : bouton primaire bleu (#2D6CDF, texte blanc), contraste vérifié.
 - Conserver focus visible et navigation clavier.
+- Layout recommandé : colonne gauche compacte pour la liste (Actifs par défaut), panneau droit dédié au détail/étapes futures (epics à venir). La liste ne doit pas occuper plus que nécessaire ; le bloc Inactifs reste replié, les Masqués sont consultables via filtre/drawer.
 
 ## Contraintes RGAA
 - Contrastes conformes (WCAG AA minimum).
