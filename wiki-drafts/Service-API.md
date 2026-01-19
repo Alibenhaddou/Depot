@@ -207,6 +207,20 @@ Exemple de réponse:
 }
 ```
 
+#### Mécanisme de versionnement
+
+- Source de version :
+  - `APP_VERSION` si défini dans l'environnement (prioritaire).
+  - Sinon, lecture du fichier `VERSION` à la racine du dépôt (répertoire `JiraVision/VERSION`).
+- Date de build :
+  - `APP_BUILD_DATE` si défini (format ISO UTC avec suffixe `Z`).
+  - Sinon, horodatage courant en UTC, formaté comme `YYYY-MM-DDTHH:MM:SSZ`.
+- Champ `python_version` : version de l'interpréteur Python utilisé par le service.
+
+Conseils déploiement (CI/CD / Docker):
+- Définir `APP_VERSION` (ex: `1.2.3`) et `APP_BUILD_DATE` (ex: `2026-01-19T12:00:00Z`) via variables d'environnement.
+- En développement local, le fichier `JiraVision/VERSION` peut contenir `dev`.
+
 ## Évolutions attendues
 
 - Externalisation complète du traitement IA vers `ai-service`.
