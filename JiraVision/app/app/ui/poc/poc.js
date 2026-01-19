@@ -120,6 +120,8 @@
     maskedCount: 0,
     lastSelectedId: null,
     lastInteractionWasKeyboard: false,
+    filter: "active",
+    inactiveOpen: false,
   };
 
   function setView(hasInstances) {
@@ -155,6 +157,26 @@
     return d.toLocaleString("fr-FR");
   }
 
+  function projectScore(p) {
+    const candidates = [
+      Number(p.story_etude_open_assigned_count),
+      Number(p.story_open_assigned_count),
+      Number(p.etude_open_assigned_count),
+    ];
+    for (const v of candidates) {
+      if (Number.isFinite(v)) return v;
+    }
+    return 0;
+  }
+
+  function sortProjects(list) {
+    return [...list].sort((a, b) => {
+      const scoreDiff = projectScore(b) - projectScore(a);
+      if (scoreDiff !== 0) return scoreDiff;
+      return (a.project_key || "").localeCompare(b.project_key || "");
+    });
+  }
+
   function isVisibleForInstances(p) {
     if (!p.cloud_id) return true;
     if (!activeCloudIds.size) return true;
@@ -164,15 +186,17 @@
   function splitMasked(items) {
     let masked = 0;
     const visible = [];
+    const maskedItems = [];
     for (const p of items) {
       if (!isVisibleForInstances(p)) continue;
       if (p.mask_type && p.mask_type !== "none") {
         masked += 1;
+        maskedItems.push(p);
         continue;
       }
       visible.push(p);
     }
-    return { visible, masked };
+    return { visible, masked, maskedItems };
   }
 
   function renderProjects() {
@@ -183,27 +207,81 @@
     const lastSync = $("lastSync");
     const btnMaskTemp = $("btnMaskTemp");
     const btnMaskDef = $("btnMaskDef");
+    const btnReadd = $("btnReadd");
+    const filtersContainer = $("projectFilters");
+    const toggleInactive = $("toggleInactive");
 
     if (!tabs || !detail || !inactiveList || !maskedCount || !lastSync) return;
 
     const activeSplit = splitMasked(projectState.projects);
     const inactiveSplit = splitMasked(projectState.inactive);
+    const maskedItems = sortProjects([...activeSplit.maskedItems, ...inactiveSplit.maskedItems]);
     projectState.maskedCount = activeSplit.masked + inactiveSplit.masked;
 
-    const visibleProjects = activeSplit.visible;
-    const visibleInactive = inactiveSplit.visible;
+    const visibleProjects = sortProjects(activeSplit.visible);
+    const visibleInactive = sortProjects(inactiveSplit.visible);
 
-    if (!projectState.selectedId && visibleProjects.length) {
-      projectState.selectedId = projectId(visibleProjects[0]);
+    // Filtres (Actifs/Inactifs/Masqués)
+    if (filtersContainer) {
+      const filters = [
+        { id: "active", label: "Actifs", count: visibleProjects.length },
+        { id: "inactive", label: "Inactifs", count: visibleInactive.length },
+        { id: "masked", label: "Masqués", count: maskedItems.length },
+      ];
+      const btns = [];
+      filtersContainer.replaceChildren();
+      filters.forEach((f, idx) => {
+        const isActive = projectState.filter === f.id;
+        const btn = el("button", {
+          type: "button",
+          class: `pill filter-btn${isActive ? " active" : ""}`,
+          "data-filter": f.id,
+          "aria-pressed": isActive ? "true" : "false",
+          "aria-current": isActive ? "true" : "false",
+          text: `${f.label}${f.count !== undefined ? ` (${f.count})` : ""}`,
+        });
+        btn.addEventListener("click", () => {
+          if (projectState.filter === f.id) return;
+          projectState.filter = f.id;
+          projectState.selectedId = null;
+          projectState.lastInteractionWasKeyboard = true;
+          announce(`Filtre ${f.label} appliqué${f.count ? `, ${f.count} projets` : ""}.`);
+          renderProjects();
+        });
+        btn.addEventListener("keydown", (e) => {
+          if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+          e.preventDefault();
+          const nextIdx = e.key === "ArrowRight" ? (idx + 1) % filters.length : (idx - 1 + filters.length) % filters.length;
+          btns[nextIdx]?.focus();
+        });
+        filtersContainer.appendChild(btn);
+        btns.push(btn);
+      });
+    }
+
+    let currentList = visibleProjects;
+    if (projectState.filter === "inactive") currentList = visibleInactive;
+    else if (projectState.filter === "masked") currentList = maskedItems;
+
+    if (!projectState.selectedId && currentList.length) {
+      projectState.selectedId = projectId(currentList[0]);
+    } else {
+      const stillThere = currentList.some((p) => projectId(p) === projectState.selectedId);
+      if (!stillThere) projectState.selectedId = currentList[0] ? projectId(currentList[0]) : null;
     }
 
     tabs.replaceChildren();
     const tabButtons = [];
-    if (!visibleProjects.length) {
-      tabs.appendChild(el("div", { class: "muted small", text: "Aucun projet actif" }));
+    const emptyMessages = {
+      active: "Aucun projet actif",
+      inactive: "Aucun projet détecté sans activité",
+      masked: "Aucun projet masqué",
+    };
+    if (!currentList.length) {
+      tabs.appendChild(el("div", { class: "muted small", text: emptyMessages[projectState.filter] || "Aucun projet" }));
     } else {
-      for (let i = 0; i < visibleProjects.length; i += 1) {
-        const p = visibleProjects[i];
+      for (let i = 0; i < currentList.length; i += 1) {
+        const p = currentList[i];
         const pid = projectId(p);
         const isSelected = pid === projectState.selectedId;
         const btn = el("button", {
@@ -251,13 +329,17 @@
       }
     }
 
-    const selected = visibleProjects.find((p) => projectId(p) === projectState.selectedId);
+    const selected = currentList.find((p) => projectId(p) === projectState.selectedId);
+    const isInactiveFilter = projectState.filter === "inactive";
+    const isMaskedFilter = projectState.filter === "masked";
+
     detail.replaceChildren();
     detail.setAttribute("aria-labelledby", "");
     if (!selected) {
       detail.appendChild(el("div", { class: "muted", text: "Sélectionne un projet." }));
       if (btnMaskTemp) btnMaskTemp.disabled = true;
       if (btnMaskDef) btnMaskDef.disabled = true;
+      if (btnReadd) btnReadd.disabled = true;
     } else {
       const selectedTabId = `project-tab-${projectId(selected)}`;
       detail.setAttribute("aria-labelledby", selectedTabId);
@@ -265,9 +347,19 @@
       detail.appendChild(el("div", { class: "small muted", text: `Clé: ${selected.project_key}` }));
       detail.appendChild(el("div", { class: "small muted", text: `Source: ${selected.source || "?"}` }));
       detail.appendChild(el("div", { class: "small muted", text: `Instance: ${selected.cloud_id || "default"}` }));
+      if (isMaskedFilter && selected.mask_type) {
+        detail.appendChild(el("div", { class: "small muted", text: `Masqué: ${selected.mask_type}` }));
+      }
       detail.appendChild(el("div", { class: "small muted", text: `Actif: ${selected.is_active === false ? "non" : "oui"}` }));
-      if (btnMaskTemp) btnMaskTemp.disabled = false;
-      if (btnMaskDef) btnMaskDef.disabled = false;
+
+      // Actions selon filtre
+      const maskDisabled = !projectState.selectedId || isInactiveFilter || isMaskedFilter;
+      if (btnMaskTemp) btnMaskTemp.disabled = maskDisabled;
+      if (btnMaskDef) btnMaskDef.disabled = maskDisabled;
+
+      if (btnReadd) {
+        btnReadd.disabled = !isInactiveFilter;
+      }
     }
 
     const shouldFocusDetail = projectState.lastInteractionWasKeyboard
@@ -281,22 +373,27 @@
 
     projectState.lastInteractionWasKeyboard = false;
 
+    const inactiveIsOpen = projectState.inactiveOpen;
     inactiveList.replaceChildren();
-    if (!visibleInactive.length) {
-      inactiveList.appendChild(el("div", { class: "muted small", text: "Aucun projet inactif" }));
-    } else {
-      for (const p of visibleInactive) {
-        const item = el("div", { class: "inactive-item" });
-        const meta = el("div", { class: "meta" }, [
-          el("strong", { text: p.project_key }),
-          el("span", { class: "muted", text: p.project_name || p.project_key }),
-          el("span", { class: "muted", text: `Instance: ${p.cloud_id || "default"}` }),
-        ]);
-        const btn = el("button", { type: "button", text: "Ajouter" });
-        btn.addEventListener("click", () => addInactiveProject(p));
-        item.appendChild(meta);
-        item.appendChild(btn);
-        inactiveList.appendChild(item);
+    inactiveList.hidden = !inactiveIsOpen;
+    if (toggleInactive) toggleInactive.setAttribute("aria-expanded", inactiveIsOpen ? "true" : "false");
+    if (inactiveIsOpen) {
+      if (!visibleInactive.length) {
+        inactiveList.appendChild(el("div", { class: "muted small", text: "Aucun projet inactif" }));
+      } else {
+        for (const p of visibleInactive) {
+          const item = el("div", { class: "inactive-item" });
+          const meta = el("div", { class: "meta" }, [
+            el("strong", { text: p.project_key }),
+            el("span", { class: "muted", text: p.project_name || p.project_key }),
+            el("span", { class: "muted", text: `Instance: ${p.cloud_id || "default"}` }),
+          ]);
+          const btn = el("button", { type: "button", text: "Ré-ajouter" });
+          btn.addEventListener("click", () => addInactiveProject(p));
+          item.appendChild(meta);
+          item.appendChild(btn);
+          inactiveList.appendChild(item);
+        }
       }
     }
 
@@ -390,6 +487,13 @@
     }
     await loadProjects();
     announce("Projet inactif ajouté.");
+  }
+
+  async function readdSelected() {
+    if (projectState.filter !== "inactive") return;
+    const selected = projectState.inactive.find((p) => projectId(p) === projectState.selectedId);
+    if (!selected) return;
+    await addInactiveProject(selected);
   }
 
   async function maskSelected(maskType) {
@@ -715,6 +819,15 @@
     if (btnMaskTemp) btnMaskTemp.addEventListener("click", () => maskSelected("temporaire"));
     const btnMaskDef = $("btnMaskDef");
     if (btnMaskDef) btnMaskDef.addEventListener("click", () => maskSelected("definitif"));
+    const btnReadd = $("btnReadd");
+    if (btnReadd) btnReadd.addEventListener("click", readdSelected);
+    const toggleInactive = $("toggleInactive");
+    if (toggleInactive) {
+      toggleInactive.addEventListener("click", () => {
+        projectState.inactiveOpen = !projectState.inactiveOpen;
+        renderProjects();
+      });
+    }
 
     const btnIssueQuick = $("btnIssueQuick");
     if (btnIssueQuick) btnIssueQuick.addEventListener("click", () => fetchIssue("quick"));
