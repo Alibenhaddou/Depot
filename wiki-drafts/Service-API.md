@@ -25,6 +25,7 @@ Service principal de JiraVision exposant l’API métier, la UI POC, l’OAuth A
 |---|---|---|---|
 | GET | `/metrics` | Metrics Prometheus | N/A |
 | GET | `/` | Redirect vers `/ui` | N/A |
+| GET | `/version` | Version du service (semver), date de build, version Python | N/A |
 
 ### Auth (Atlassian OAuth)
 
@@ -184,6 +185,27 @@ data: {"text":"..."}
 
 - Metrics Prometheus : `/metrics`.
 - Tracing OpenTelemetry si `OTEL_EXPORTER_OTLP_ENDPOINT` défini.
+
+### Version du service
+
+Endpoint: `GET /version`
+
+Exemple d’appel:
+
+```
+curl -s http://localhost:8000/version | jq
+```
+
+Exemple de réponse:
+
+```json
+{
+  "service": "api",
+  "version": "dev",
+  "python_version": "3.12.3",
+  "build_date": "2026-01-19T12:00:00Z"
+}
+```
 
 ## Évolutions attendues
 

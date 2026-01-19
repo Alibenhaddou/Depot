@@ -20,6 +20,7 @@ Microservice dédié au traitement IA de JiraVision : proxy LLM, auth inter-serv
 | GET | `/health` | Liveness | N/A |
 | GET | `/ready` | Readiness | N/A |
 | GET | `/metrics` | Metrics Prometheus | N/A |
+| GET | `/version` | Version du service (semver), date de build, version Python | N/A |
 | POST | `/ai/summarize-jql` | Résumé de tickets | Token inter-service (si activé) |
 | POST | `/ai/analyze-issue` | Analyse ticket | Token inter-service (si activé) |
 | POST | `/ai/analyze-issue/stream` | Analyse en streaming (SSE) | Token inter-service (si activé) |
@@ -102,6 +103,27 @@ data: {"text":"Analyse progressive - résultat exemple"}
 
 - Metrics Prometheus : `/metrics`.
 - Tracing OpenTelemetry si `OTEL_EXPORTER_OTLP_ENDPOINT` défini.
+
+### Version du service
+
+Endpoint: `GET /version`
+
+Exemple d’appel:
+
+```
+curl -s http://localhost:8001/version | jq
+```
+
+Exemple de réponse:
+
+```json
+{
+  "service": "ai-service",
+  "version": "dev",
+  "python_version": "3.12.3",
+  "build_date": "2026-01-19T12:00:00Z"
+}
+```
 
 ## Erreurs & codes
 

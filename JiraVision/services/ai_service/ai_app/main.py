@@ -5,7 +5,7 @@ from fastapi.responses import PlainTextResponse, JSONResponse
 import os
 import sys
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, UTC
 from starlette.responses import StreamingResponse
 from prometheus_client import (
     generate_latest,
@@ -69,7 +69,7 @@ async def version():
             ver = (repo_root / "VERSION").read_text().strip()
         except Exception:
             ver = "dev"
-    build_date = os.getenv("APP_BUILD_DATE") or datetime.utcnow().isoformat() + "Z"
+    build_date = os.getenv("APP_BUILD_DATE") or datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     return JSONResponse({
         "service": "ai-service",
         "version": ver,
