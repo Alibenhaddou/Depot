@@ -9,6 +9,11 @@ Rendre le panel Projets PO plus lisible et compréhensible, tout en restant conf
 - **Masqué** : masqué par l'utilisateur pour réduire le bruit visuel ; il réapparaît lors d'une nouvelle session/connexion (non définitif).
 - **Inactif** : projet non mis en évidence et ne revient qu'après une synchronisation manuelle (ex: bouton « Synchroniser Jira »).
 
+### Persistance / source de vérité
+- **Masqué** : état **session-scopé** (stocké côté backend dans la session utilisateur, clé par `cloud_id` + `project_key`). Effet : disparaît de la vue tant que la session vit ; réapparaît à la reconnexion.
+- **Inactif** : état issu de la synchronisation Jira (backend). Ne change que sur synchro manuelle (« Synchroniser Jira »).
+- **Actif** : état par défaut après synchro ; peut passer à masqué via action utilisateur.
+
 1) **Chargement initial**
    - Message d’attente explicite pendant le chargement (ex: « Chargement de vos projets Jira… »).
    - Si aucun projet actif, CTA principal : **« Synchroniser Jira »**.
