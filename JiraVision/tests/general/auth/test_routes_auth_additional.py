@@ -1,5 +1,7 @@
 import asyncio
 
+import httpx
+
 import pytest
 
 from fastapi import HTTPException
@@ -171,3 +173,116 @@ def test_oauth_callback_success(monkeypatch):
     assert r.status_code in (307, 302)
     assert captured["sess"]["tokens_by_cloud"]["c1"]["access_token"] == "atok"
     assert captured["sess"]["active_cloud_id"] == "c1"
+
+
+def _patch_oauth_happy_path(monkeypatch):
+    monkeypatch.setattr("app.routes.auth.ensure_session", lambda req, resp: "sid")
+    monkeypatch.setattr("app.routes.auth.get_session", lambda sid: {"state": "s123"})
+    monkeypatch.setattr("app.routes.auth.set_session", lambda *_a, **_k: None)
+
+    class FakeClientOK:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, *a, **k):
+            class R:
+                status_code = 200
+
+                def json(self):
+                    return {"access_token": "atok"}
+
+            return R()
+
+    monkeypatch.setattr("app.routes.auth.httpx.AsyncClient", FakeClientOK)
+
+    async def fake_accessible(_token):
+        return [
+            {"id": "c1", "url": "https://x", "scopes": ["read:jira-work"], "name": "C1"}
+        ]
+
+    monkeypatch.setattr("app.routes.auth._get_accessible_resources", fake_accessible)
+
+
+def test_oauth_callback_jira_permission_error(monkeypatch):
+    _patch_oauth_happy_path(monkeypatch)
+
+    class FakeJiraClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def get_myself(self):
+            raise PermissionError()
+
+        async def aclose(self):
+            return None
+
+    monkeypatch.setattr("app.routes.auth.JiraClient", FakeJiraClient)
+
+    r = client.get("/oauth/callback?code=code&state=s123", follow_redirects=False)
+    assert r.status_code == 502
+
+
+def test_oauth_callback_jira_http_error(monkeypatch):
+    _patch_oauth_happy_path(monkeypatch)
+
+    class FakeJiraClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def get_myself(self):
+            req = httpx.Request("GET", "http://x")
+            resp = httpx.Response(400, request=req, content=b"bad")
+            raise httpx.HTTPStatusError("err", request=req, response=resp)
+
+        async def aclose(self):
+            return None
+
+    monkeypatch.setattr("app.routes.auth.JiraClient", FakeJiraClient)
+
+    r = client.get("/oauth/callback?code=code&state=s123", follow_redirects=False)
+    assert r.status_code == 502
+
+
+def test_oauth_callback_jira_generic_error(monkeypatch):
+    _patch_oauth_happy_path(monkeypatch)
+
+    class FakeJiraClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def get_myself(self):
+            raise RuntimeError("boom")
+
+        async def aclose(self):
+            return None
+
+    monkeypatch.setattr("app.routes.auth.JiraClient", FakeJiraClient)
+
+    r = client.get("/oauth/callback?code=code&state=s123", follow_redirects=False)
+    assert r.status_code == 502
+
+
+def test_oauth_callback_upsert_user_error(monkeypatch):
+    _patch_oauth_happy_path(monkeypatch)
+
+    class FakeJiraClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def get_myself(self):
+            return {"accountId": "u1"}
+
+        async def aclose(self):
+            return None
+
+    monkeypatch.setattr("app.routes.auth.JiraClient", FakeJiraClient)
+    monkeypatch.setattr("app.routes.auth.upsert_user_from_jira", lambda *_a, **_k: (_ for _ in ()).throw(ValueError("bad")))
+
+    r = client.get("/oauth/callback?code=code&state=s123", follow_redirects=False)
+    assert r.status_code == 502

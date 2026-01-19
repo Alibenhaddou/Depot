@@ -58,6 +58,8 @@ async def _has_active_epic(client: JiraClient, project_key: str) -> bool:
 async def sync_projects_for_user(
     jira_account_id: str,
     session: Dict[str, Any],
+    *,
+    reset_definitif: bool = False,
 ) -> Dict[str, Any]:
     tokens_by_cloud = session.get("tokens_by_cloud") or {}
     cloud_ids: List[str] = session.get("cloud_ids") or list(tokens_by_cloud.keys())
@@ -95,7 +97,13 @@ async def sync_projects_for_user(
 
                 prev = existing.get(project_id)
                 prev_mask = (prev or {}).get("mask_type") or "none"
-                mask_type = "none" if prev_mask == "temporaire" else prev_mask
+                # Masquage temporaire reset à chaque refresh; définitif seulement si refresh manuel
+                if prev_mask == "temporaire":
+                    mask_type = "none"
+                elif reset_definitif and prev_mask == "definitif":
+                    mask_type = "none"
+                else:
+                    mask_type = prev_mask
                 masked_at = (prev or {}).get("masked_at")
 
                 project = po_project_store.upsert_project_for_user(
@@ -127,13 +135,22 @@ async def sync_projects_for_user(
         if prev.get("source") != "jira":
             continue
         cloud_id, project_key = project_id.split(":", 1)
+        prev_mask = (prev or {}).get("mask_type") or "none"
+        # Même logique de reset pour les projets non remontés par Jira (reporter)
+        if prev_mask == "temporaire":
+            mask_type = "none"
+        elif reset_definitif and prev_mask == "definitif":
+            mask_type = "none"
+        else:
+            mask_type = prev_mask
+
         project = po_project_store.upsert_project_for_user(
             jira_account_id,
             project_key=project_key,
             project_name=prev.get("project_name") or project_key,
             source="jira",
             cloud_id=None if cloud_id == "default" else cloud_id,
-            mask_type=prev.get("mask_type") or "none",
+            mask_type=mask_type,
             masked_at=prev.get("masked_at"),
             is_active=False,
         )

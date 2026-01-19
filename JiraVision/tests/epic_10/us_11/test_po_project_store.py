@@ -160,3 +160,42 @@ def test_list_projects_sorted(monkeypatch):
 
     projects = store.list_projects_for_user("acct")
     assert [p["project_key"] for p in projects] == ["ALPHA", "BETA"]
+
+
+def test_load_json_invalid_and_non_dict(monkeypatch):
+    # invalid JSON -> None
+    monkeypatch.setattr(store, "_get_raw", lambda _k: "not-json")
+    assert store._load_json("k") is None
+
+    # valid JSON but not a dict -> None
+    monkeypatch.setattr(store, "_get_raw", lambda _k: "[]")
+    assert store._load_json("k") is None
+
+
+def test_get_project_for_user(monkeypatch):
+    _force_local_store(monkeypatch)
+
+    store.upsert_project_for_user(
+        "acct",
+        project_key="PROJ",
+        project_name="Projet",
+        source="jira",
+        cloud_id="c1",
+        now=10,
+    )
+
+    found = store.get_project_for_user("acct", project_key="PROJ", cloud_id="c1")
+    assert found is not None
+    assert found["project_key"] == "PROJ"
+
+
+def test_set_project_mask_invalid(monkeypatch):
+    _force_local_store(monkeypatch)
+
+    with pytest.raises(ValueError):
+        store.set_project_mask(
+            "acct",
+            project_key="PROJ",
+            cloud_id="c1",
+            mask_type="bad",
+        )

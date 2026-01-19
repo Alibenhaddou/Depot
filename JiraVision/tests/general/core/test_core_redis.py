@@ -118,3 +118,42 @@ def test_delete_session_falls_back_to_local_store_on_error(monkeypatch):
     core_redis.delete_session("sid")
 
     assert "session:sid" not in core_redis._local_store
+
+
+def test_ensure_redis_available_sets_true(monkeypatch):
+    core_redis._redis_available = None
+
+    class FakeRedis:
+        def ping(self):
+            return True
+
+    monkeypatch.setattr(core_redis, "redis_client", FakeRedis())
+
+    assert core_redis._ensure_redis_available() is True
+    assert core_redis._redis_available is True
+
+
+def test_get_session_expire_failure_marks_unavailable(monkeypatch):
+    core_redis._redis_available = True
+    core_redis._redis_warned = False
+
+    def fake_get(_k):
+        return json.dumps({"x": 1})
+
+    def raising_expire(*_a, **_k):
+        raise RuntimeError("expire")
+
+    fake = types.SimpleNamespace(get=fake_get, expire=raising_expire)
+    monkeypatch.setattr(core_redis, "redis_client", fake)
+
+    core_redis.get_session("sid")
+    assert core_redis._redis_available is False
+
+
+def test_delete_session_when_redis_unavailable(monkeypatch):
+    core_redis._redis_available = False
+    core_redis._local_store.clear()
+    core_redis._local_store["session:sid"] = json.dumps({"a": 1})
+
+    core_redis.delete_session("sid")
+    assert "session:sid" not in core_redis._local_store

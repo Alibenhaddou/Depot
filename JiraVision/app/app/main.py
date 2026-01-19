@@ -12,6 +12,7 @@ from app.routes.auth_ui import router as auth_ui_router
 from app.routes.jira import router as jira_router
 from app.routes.ai import router as ai_router
 from app.routes.ui import router as ui_router  # version "choix 2" => prefix="/ui"
+from app.routes.po_projects import router as po_projects_router
 from app.routes.debug import router as debug_router
 from fastapi.responses import RedirectResponse
 from prometheus_client import (
@@ -103,6 +104,9 @@ def create_app() -> FastAPI:
     enable_poc = _env_flag("ENABLE_POC_UI", default=True)
     if enable_poc:
         app.include_router(ui_router)
+
+    # PO projects endpoints
+    app.include_router(po_projects_router)
 
     # Debug endpoints : dev only
     enable_debug = _env_flag("ENABLE_DEBUG_ROUTES", default=False)
