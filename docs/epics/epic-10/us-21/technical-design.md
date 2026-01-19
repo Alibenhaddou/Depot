@@ -14,6 +14,11 @@ Rendre le panel Projets PO plus lisible et compréhensible, tout en restant conf
 - **Inactif** : état issu de la synchronisation Jira (backend). Ne change que sur synchro manuelle (« Synchroniser Jira »).
 - **Actif** : état par défaut après synchro ; peut passer à masqué via action utilisateur.
 
+### Multi-instance Jira (cloud_id)
+- Toutes les actions (masquage, sélection, filtres) sont scoppées par `cloud_id`.
+- Les listes Actifs/Inactifs/Masqués ne mélangent pas plusieurs instances : l’utilisateur voit les projets de l’instance Jira courante.
+- Le masquage session-scopé est donc indexé par (`cloud_id`, `project_key`).
+
 ### Règle de tri (priorisation)
 - Objectif : mettre en haut les projets les plus « chauds » pour l’utilisateur.
 - Critère principal : nombre de tickets **Story** ou **Étude** (non annulés, non terminés) **assignés à l’utilisateur**.
