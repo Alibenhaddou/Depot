@@ -41,6 +41,12 @@
     return n;
   };
 
+  const announce = (msg) => {
+    const node = $("panelStatus");
+    if (!node) return;
+    node.textContent = msg;
+  };
+
   /* ------------------------------------------------------------------ */
   /* top bar                                                             */
   /* ------------------------------------------------------------------ */
@@ -99,6 +105,7 @@
     lastSyncedAt: null,
     selectedId: null,
     maskedCount: 0,
+    lastSelectedId: null,
   };
 
   function setView(hasInstances) {
@@ -343,21 +350,39 @@
     }
 
     tabs.replaceChildren();
+    const tabButtons = [];
     if (!visibleProjects.length) {
       tabs.appendChild(el("div", { class: "muted small", text: "Aucun projet actif" }));
     } else {
-      for (const p of visibleProjects) {
+      for (let i = 0; i < visibleProjects.length; i += 1) {
+        const p = visibleProjects[i];
         const pid = projectId(p);
         const btn = el("button", {
           type: "button",
           class: `project-tab${pid === projectState.selectedId ? " active" : ""}`,
           text: p.project_key,
+          role: "tab",
+          "aria-selected": pid === projectState.selectedId ? "true" : "false",
+          "aria-controls": "projectDetail",
+          id: `project-tab-${pid}`,
         });
         btn.addEventListener("click", () => {
           projectState.selectedId = pid;
           renderProjects();
         });
+        btn.addEventListener("keydown", (e) => {
+          if (e.key === "ArrowRight") {
+            e.preventDefault();
+            const next = tabButtons[i + 1] || tabButtons[0];
+            next?.focus();
+          } else if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            const prev = tabButtons[i - 1] || tabButtons[tabButtons.length - 1];
+            prev?.focus();
+          }
+        });
         tabs.appendChild(btn);
+        tabButtons.push(btn);
       }
     }
 
@@ -376,6 +401,10 @@
       if (btnMaskTemp) btnMaskTemp.disabled = false;
       if (btnMaskDef) btnMaskDef.disabled = false;
     }
+
+    const shouldFocusDetail = projectState.selectedId && projectState.selectedId !== projectState.lastSelectedId;
+    projectState.lastSelectedId = projectState.selectedId;
+    if (shouldFocusDetail && detail) detail.focus();
 
     inactiveList.replaceChildren();
     if (!visibleInactive.length) {
@@ -410,12 +439,16 @@
       window.location.href = "/auth";
       return;
     }
-    if (!r.ok || !r.json) return;
+    if (!r.ok || !r.json) {
+      announce("Erreur lors du chargement des projets.");
+      return;
+    }
 
     projectState.projects = r.json.projects || [];
     projectState.inactive = r.json.inactive_projects || [];
     projectState.lastSyncedAt = r.json.last_synced_at || null;
     renderProjects();
+    announce("Projets chargés.");
   }
 
   async function refreshProjects() {
@@ -426,11 +459,15 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reset_definitif: reset }),
     });
-    if (!r.ok || !r.json) return;
+    if (!r.ok || !r.json) {
+      announce("Erreur lors du rafraîchissement.");
+      return;
+    }
 
     projectState.projects = r.json.projects || [];
     projectState.inactive = r.json.inactive_projects || [];
     renderProjects();
+    announce("Projets rafraîchis.");
   }
 
   async function addProject() {
@@ -449,8 +486,12 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (!r.ok) return;
+    if (!r.ok) {
+      announce("Erreur lors de l’ajout du projet.");
+      return;
+    }
     await loadProjects();
+    announce("Projet ajouté.");
   }
 
   async function addInactiveProject(p) {
@@ -467,8 +508,12 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (!r.ok) return;
+    if (!r.ok) {
+      announce("Erreur lors de l’ajout du projet inactif.");
+      return;
+    }
     await loadProjects();
+    announce("Projet inactif ajouté.");
   }
 
   async function maskSelected(maskType) {
@@ -481,8 +526,12 @@
         body: JSON.stringify({ mask_type: maskType, cloud_id: selected.cloud_id || null }),
       }
     );
-    if (!r.ok) return;
+    if (!r.ok) {
+      announce("Erreur lors du masquage.");
+      return;
+    }
     await loadProjects();
+    announce("Projet masqué.");
   }
 
   async function streamSse(url, options, onEvent) {

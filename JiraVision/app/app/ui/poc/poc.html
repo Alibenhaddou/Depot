@@ -39,12 +39,13 @@
             <div class="small muted" id="maskedCount"></div>
             <div class="small muted" id="lastSync"></div>
           </div>
-          <div id="projectTabs" class="project-tabs"></div>
-          <div id="projectDetail" class="project-detail"></div>
+          <div id="projectTabs" class="project-tabs" role="tablist" aria-label="Projets PO"></div>
+          <div id="projectDetail" class="project-detail" role="region" tabindex="-1" aria-label="Détail du projet"></div>
           <div class="project-actions">
             <button id="btnMaskTemp" type="button" disabled>Masquer temporaire</button>
             <button id="btnMaskDef" type="button" disabled>Masquer définitif</button>
           </div>
+          <div id="panelStatus" class="sr-only" role="status" aria-live="polite"></div>
         </section>
 
         <section class="panel panel-inactive">
