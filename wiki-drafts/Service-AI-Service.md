@@ -139,6 +139,31 @@ Conseils déploiement (CI/CD / Docker):
 - Définir `APP_VERSION` (ex: `1.2.3`) et `APP_BUILD_DATE` (ex: `2026-01-19T12:00:00Z`) via variables d'environnement.
 - En développement local, le fichier `JiraVision/VERSION` peut contenir `dev`.
 
+#### CI/CD (exemples)
+
+- docker-compose (override):
+  ```yaml
+  services:
+    ai-service:
+      environment:
+        APP_VERSION: "${GIT_TAG:-dev}"
+        APP_BUILD_DATE: "${BUILD_DATE:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}"
+  ```
+
+- GitHub Actions (env pour l'image ou le déploiement):
+  ```yaml
+  env:
+    APP_VERSION: ${{ github.ref_name }}
+    APP_BUILD_DATE: ${{ steps.meta.outputs.build_date }}
+
+  steps:
+    - name: Set build date
+      id: meta
+      run: echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+    - name: Build image
+      run: docker build --build-arg APP_VERSION=$APP_VERSION --build-arg APP_BUILD_DATE=$APP_BUILD_DATE .
+  ```
+
 ## Erreurs & codes
 
 - **401** : token manquant / expiré / invalide.
