@@ -4,6 +4,11 @@
 Rendre le panel Projets PO plus lisible et compréhensible, tout en restant conforme RGAA et professionnel.
 
 ## Parcours proposé
+### Statuts fonctionnels (source de vérité)
+- **Actif** : projet présent et mis en avant dans le dashboard.
+- **Masqué** : masqué par l'utilisateur pour réduire le bruit visuel ; il réapparaît lors d'une nouvelle session/connexion (non définitif).
+- **Inactif** : projet non mis en évidence et ne revient qu'après une synchronisation manuelle (ex: bouton « Synchroniser Jira »).
+
 1) **Chargement initial**
    - Message d’attente explicite pendant le chargement (ex: « Chargement de vos projets Jira… »).
    - Si aucun projet actif, CTA principal : **« Synchroniser Jira »**.
