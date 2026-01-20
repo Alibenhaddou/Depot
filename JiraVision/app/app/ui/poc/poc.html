@@ -23,7 +23,6 @@
     </header>
 
     <section id="appContent" class="panel main-panel hidden">
-      <nav id="projectFilters" class="project-filters" role="group" aria-label="Filtres projets"></nav>
       <div class="panel-columns">
         <aside class="panel-list">
           <div id="projectTabs" class="project-tabs" role="listbox" aria-label="Liste des projets"></div>
@@ -31,30 +30,28 @@
         <section class="panel-detail">
           <div id="projectDetail" class="project-detail" role="region" aria-label="Détail du projet"></div>
           <div class="project-actions">
-            <button id="btnMaskTemp" type="button" disabled>Masquer temporaire</button>
-            <button id="btnMaskDef" type="button" disabled>Masquer définitif</button>
-            <button id="btnReadd" type="button" class="ghost" disabled>Ré-ajouter</button>
+            <button id="btnMaskTemp" type="button" class="btn-compact btn-mask" disabled>
+              <span class="btn-icon">⏱️</span> Masquer temporaire
+            </button>
+            <button id="btnMaskDef" type="button" class="btn-compact btn-mask" disabled>
+              <span class="btn-icon">🚫</span> Masquer définitif
+            </button>
           </div>
           <div class="panel-actions">
             <label class="inline-check">
               <input type="checkbox" id="resetDefinitif" />
               Réintégrer masqués définitifs
             </label>
-            <button id="btnProjectsRefresh" type="button">Synchroniser Jira</button>
-            <button id="btnProjectAdd" type="button">Forcer l'ajout</button>
+            <button id="btnProjectsRefresh" type="button" class="btn-compact btn-action">
+              <span class="btn-icon">🔄</span> Synchroniser Jira
+            </button>
+            <button id="btnProjectAdd" type="button" class="btn-compact btn-action">
+              <span class="btn-icon">➕</span> Forcer l'ajout
+            </button>
           </div>
-          <div class="small muted" id="maskedCount"></div>
-          <div class="small muted" id="lastSync"></div>
           <div id="panelStatus" class="sr-only" role="status" aria-live="polite"></div>
           <div id="panelStatusVisible" class="status" aria-live="polite"></div>
         </section>
-      </div>
-      <div class="inactive-block">
-        <button id="toggleInactive" type="button" aria-expanded="false" aria-controls="inactiveList" class="link-btn">
-          Projets détectés sans activité
-        </button>
-        <div class="small muted">Inactif = pas d’epic active. Vous pouvez ré-ajouter manuellement.</div>
-        <div id="inactiveList" class="inactive-list" hidden></div>
       </div>
     </section>
 

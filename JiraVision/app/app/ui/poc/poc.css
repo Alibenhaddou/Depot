@@ -376,3 +376,52 @@ td {
     justify-content: flex-start;
   }
 }
+
+/* Compact buttons styling */
+.btn-compact {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 8px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-compact .btn-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.btn-mask {
+  background: linear-gradient(135deg, #fff3e2 0%, #ffe8c5 100%);
+  border-color: #ffb26b;
+  color: #8b4513;
+}
+
+.btn-mask:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ffe8c5 0%, #ffd9a0 100%);
+  border-color: #ff9f47;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255, 178, 107, 0.3);
+}
+
+.btn-action {
+  background: linear-gradient(135deg, #eef4ff 0%, #d9e7ff 100%);
+  border-color: #2d6cdf;
+  color: #1a4ba8;
+}
+
+.btn-action:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d9e7ff 0%, #c4daff 100%);
+  border-color: #2159c4;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(45, 108, 223, 0.3);
+}
+
+.btn-compact:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
