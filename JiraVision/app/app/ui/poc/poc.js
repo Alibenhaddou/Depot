@@ -114,7 +114,6 @@
   let knownSites = [];
   const projectState = {
     projects: [],
-    inactive: [],
     lastSyncedAt: null,
     selectedId: null,
     lastSelectedId: null,
@@ -315,7 +314,6 @@
     }
 
     projectState.projects = r.json.projects || [];
-    projectState.inactive = r.json.inactive_projects || [];
     projectState.lastSyncedAt = r.json.last_synced_at || null;
     renderProjects();
     announce("Projets chargés.");
@@ -335,7 +333,6 @@
     }
 
     projectState.projects = r.json.projects || [];
-    projectState.inactive = r.json.inactive_projects || [];
     projectState.lastSyncedAt = r.json.last_synced_at || null;
     renderProjects();
     announce("Projets rafraîchis.");
