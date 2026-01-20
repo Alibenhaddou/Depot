@@ -96,3 +96,24 @@ async def test_sync_status_and_mask(monkeypatch):
 
     assert active["B"]["mask_type"] == "definitif"
     assert active["B"]["masked_at"] == 123
+
+
+@pytest.mark.asyncio
+async def test_epic_done_statuses_in_jql(monkeypatch):
+    """Test that the JQL query includes all done statuses."""
+    # Verify that the JQL query includes all expected done statuses
+    jql = po_project_sync._active_epic_jql("TEST")
+    
+    # Check that all done statuses are in the JQL
+    assert '"Annulé"' in jql
+    assert '"Cancelled"' in jql or '"Canceled"' in jql
+    assert '"Closed"' in jql
+    assert '"Done"' in jql
+    assert '"Fermé"' in jql
+    assert '"Resolved"' in jql or '"Résolu"' in jql
+    assert '"Terminé"' in jql
+    
+    # Verify JQL structure
+    assert 'project = "TEST"' in jql
+    assert 'type = Epic' in jql
+    assert 'status NOT IN' in jql

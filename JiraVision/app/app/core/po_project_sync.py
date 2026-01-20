@@ -10,7 +10,17 @@ from app.core import po_project_store
 
 logger = logging.getLogger(__name__)
 
-_EPIC_DONE_STATUSES = {"Annulé", "Done"}
+_EPIC_DONE_STATUSES = {
+    "Annulé",
+    "Done",
+    "Terminé",
+    "Fermé",
+    "Closed",
+    "Resolved",
+    "Résolu",
+    "Cancelled",
+    "Canceled",
+}
 
 
 def _reporter_jql(account_id: str) -> str:
