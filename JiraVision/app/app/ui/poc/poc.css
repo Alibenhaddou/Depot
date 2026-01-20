@@ -333,7 +333,6 @@ td {
   
   .global-actions {
     width: 100%;
-    justify-content: stretch;
   }
   
   .global-actions .compact-btn {
