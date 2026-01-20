@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List
 
 import httpx
 
@@ -16,11 +16,6 @@ if not logger.hasHandlers():
     logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
-_EPIC_DONE_STATUSES = {
-    "Annulé", "Done", "Terminé", "Fermé", "Closed", "Résolu", "Resolved", "Abandonné", "Cancelled"
-}
-
-
 
 def _active_projects_jql(account_id: str) -> str:
     return (
@@ -28,26 +23,6 @@ def _active_projects_jql(account_id: str) -> str:
         'AND type in (Story, Etude) '
         'AND status NOT IN ("Done", "Annulé")'
     )
-
-
-def _active_epic_jql(project_key: str) -> str:
-    statuses = ", ".join(f'"{s}"' for s in sorted(_EPIC_DONE_STATUSES))
-    return (
-        f'project = "{project_key}" AND type = Epic '
-        f"AND status NOT IN ({statuses})"
-    )
-
-
-def _extract_projects(issues: Iterable[Dict[str, Any]]) -> Dict[str, Dict[str, str]]:
-    projects: Dict[str, Dict[str, str]] = {}
-    for issue in issues:
-        fields = issue.get("fields", {}) or {}
-        proj = fields.get("project", {}) or {}
-        key = proj.get("key")
-        name = proj.get("name") or key
-        if key:
-            projects[key] = {"project_key": key, "project_name": name}
-    return projects
 
 
 async def _fetch_reporter_projects(
@@ -70,17 +45,6 @@ async def _fetch_reporter_projects(
             projects[key] = {"project_key": key, "project_name": name}
     logger.info(f"[DEBUG] Projets actifs trouvés: {list(projects.keys())}")
     return projects
-
-
-async def _has_active_epic(client: JiraClient, project_key: str) -> bool:
-    jql = _active_epic_jql(project_key)
-    logger.info(f"[DEBUG] JQL utilisée pour le projet {project_key}: {jql}")
-    data = await client.search_jql(jql, max_results=10)
-    logger.info(f"[DEBUG] Résultat brut Jira pour {project_key}: {data}")
-    issues = data.get("issues", [])
-    statuses = [issue.get("fields", {}).get("status", {}).get("name") for issue in issues]
-    logger.info(f"[DEBUG] Statuts des epics pour le projet {project_key}: {statuses}")
-    return bool(issues)
 
 
 async def sync_projects_for_user(
