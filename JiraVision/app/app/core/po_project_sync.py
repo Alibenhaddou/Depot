@@ -31,7 +31,7 @@ async def _fetch_reporter_projects(
 ) -> Dict[str, Dict[str, str]]:
     # Nouvelle JQL pour tickets actifs
     jql = _active_projects_jql(account_id)
-    logger.info(f"[DEBUG] JQL projets actifs: {jql}")
+    logger.debug(f"JQL projets actifs: {jql}")
     data = await client.search_jql(jql, max_results=100)
     issues = data.get("issues", []) if isinstance(data, dict) else []
     # Extraire les projets distincts à partir des tickets trouvés
@@ -43,7 +43,7 @@ async def _fetch_reporter_projects(
         name = proj.get("name") or key
         if key:
             projects[key] = {"project_key": key, "project_name": name}
-    logger.info(f"[DEBUG] Projets actifs trouvés: {list(projects.keys())}")
+    logger.debug(f"Projets actifs trouvés: {list(projects.keys())}")
     return projects
 
 
@@ -66,7 +66,6 @@ async def sync_projects_for_user(
     active_projects: List[Dict[str, Any]] = []
     inactive_projects: List[Dict[str, Any]] = []
 
-
     for cloud_id in cloud_ids:
         token_entry = tokens_by_cloud.get(cloud_id) or {}
         access_token = token_entry.get("access_token")
@@ -76,7 +75,7 @@ async def sync_projects_for_user(
         client = JiraClient(access_token=access_token, cloud_id=cloud_id)
         try:
             projects = await _fetch_reporter_projects(client, jira_account_id)
-            logger.info(f"[DEBUG] Projets actifs pour cloud_id={cloud_id}, user={jira_account_id}: {list(projects.keys())}")
+            logger.debug(f"Projets actifs pour cloud_id={cloud_id}, user={jira_account_id}: {list(projects.keys())}")
             for project_key, project_info in projects.items():
                 project_id = f"{cloud_id}:{project_key}"
                 found_ids.add(project_id)
