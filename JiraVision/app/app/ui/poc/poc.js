@@ -207,23 +207,20 @@
     const activeSplit = splitMasked(projectState.projects);
     const visibleProjects = sortProjects(activeSplit.visible);
 
-    // Toujours afficher uniquement les projets actifs
-    let currentList = visibleProjects;
-
-    if (!projectState.selectedId && currentList.length) {
-      projectState.selectedId = projectId(currentList[0]);
+    if (!projectState.selectedId && visibleProjects.length) {
+      projectState.selectedId = projectId(visibleProjects[0]);
     } else {
-      const stillThere = currentList.some((p) => projectId(p) === projectState.selectedId);
-      if (!stillThere) projectState.selectedId = currentList[0] ? projectId(currentList[0]) : null;
+      const stillThere = visibleProjects.some((p) => projectId(p) === projectState.selectedId);
+      if (!stillThere) projectState.selectedId = visibleProjects[0] ? projectId(visibleProjects[0]) : null;
     }
 
     tabs.replaceChildren();
     const tabButtons = [];
-    if (!currentList.length) {
+    if (!visibleProjects.length) {
       tabs.appendChild(el("div", { class: "muted small", text: "Aucun projet actif" }));
     } else {
-      for (let i = 0; i < currentList.length; i += 1) {
-        const p = currentList[i];
+      for (let i = 0; i < visibleProjects.length; i += 1) {
+        const p = visibleProjects[i];
         const pid = projectId(p);
         const isSelected = pid === projectState.selectedId;
         const btn = el("button", {
@@ -271,7 +268,7 @@
       }
     }
 
-    const selected = currentList.find((p) => projectId(p) === projectState.selectedId);
+    const selected = visibleProjects.find((p) => projectId(p) === projectState.selectedId);
 
     detail.replaceChildren();
     detail.setAttribute("aria-labelledby", "");
@@ -288,7 +285,7 @@
       detail.appendChild(el("div", { class: "small muted", text: `Instance: ${selected.cloud_id || "default"}` }));
       detail.appendChild(el("div", { class: "small muted", text: `Actif: ${selected.is_active === false ? "non" : "oui"}` }));
 
-      // Enable mask buttons when a project is selected
+      // Activer les boutons de masquage quand un projet est sélectionné
       const maskDisabled = !projectState.selectedId;
       if (btnMaskTemp) btnMaskTemp.disabled = maskDisabled;
       if (btnMaskDef) btnMaskDef.disabled = maskDisabled;
