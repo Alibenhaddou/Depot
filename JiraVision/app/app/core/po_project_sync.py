@@ -10,16 +10,19 @@ from app.core import po_project_store
 
 logger = logging.getLogger(__name__)
 
+# Epic statuses considered as "done" or "closed" for active project detection.
+# Includes both French and English variants commonly found in Jira installations.
+# These statuses will be excluded from the active epic query.
 _EPIC_DONE_STATUSES = {
-    "Annulé",
-    "Done",
-    "Terminé",
-    "Fermé",
-    "Closed",
-    "Resolved",
-    "Résolu",
-    "Cancelled",
-    "Canceled",
+    "Annulé",      # French: Cancelled
+    "Cancelled",   # English: Cancelled (UK)
+    "Canceled",    # English: Canceled (US)
+    "Closed",      # English: Closed
+    "Done",        # English: Done
+    "Fermé",       # French: Closed
+    "Resolved",    # English: Resolved
+    "Résolu",      # French: Resolved
+    "Terminé",     # French: Finished/Done
 }
 
 
