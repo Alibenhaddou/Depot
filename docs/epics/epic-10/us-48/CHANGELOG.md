@@ -13,7 +13,9 @@
 
 ### Points importants
 - La logique précédente basée sur les epics a été remplacée pour une détection plus fiable et conforme au besoin métier.
+- Le code orphelin (fonctions Epic non utilisées) a été supprimé pour plus de clarté.
 - La documentation technique et utilisateur a été mise à jour pour refléter ce changement.
+- Les tests unitaires ont été adaptés pour valider la nouvelle logique.
 
 ---
 

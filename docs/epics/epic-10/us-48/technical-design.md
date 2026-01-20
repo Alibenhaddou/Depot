@@ -3,6 +3,19 @@
 ## Objectif
 Permettre au PO de visualiser, filtrer, masquer et synchroniser ses projets Jira depuis une interface dédiée, accessible et robuste.
 
+## Correction bug #48 - Détection des projets actifs
+
+**Problème résolu** : La détection des projets actifs utilisait une logique basée sur les Epics, ce qui ne reflétait pas correctement l'activité réelle des POs.
+
+**Solution mise en place** :
+- Un projet est considéré comme **actif** s'il contient au moins un ticket de type **Story** ou **Etude**, dont le reporter est l'utilisateur courant, et dont le statut n'est ni "Done" ni "Annulé"
+- Requête JQL utilisée : `reporter = "{account_id}" AND type in (Story, Etude) AND status NOT IN ("Done", "Annulé")`
+- Les projets distincts sont extraits à partir des tickets trouvés (pas de vérification Epic)
+
+**Impact** :
+- Détection plus fiable des projets sur lesquels le PO travaille activement
+- Conformité au besoin métier : focus sur les Stories/Etudes en cours, pas sur les Epics
+
 ## Fonctionnalités principales
 - Listing des projets Jira par instance (multi-cloud)
 - Filtres (actifs, inactifs, masqués)
