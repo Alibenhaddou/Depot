@@ -120,8 +120,6 @@
     maskedCount: 0,
     lastSelectedId: null,
     lastInteractionWasKeyboard: false,
-    filter: "active",
-    inactiveOpen: false,
   };
 
   function setView(hasInstances) {
@@ -202,66 +200,18 @@
   function renderProjects() {
     const tabs = $("projectTabs");
     const detail = $("projectDetail");
-    const inactiveList = $("inactiveList");
     const maskedCount = $("maskedCount");
-    const lastSync = $("lastSync");
     const btnMaskTemp = $("btnMaskTemp");
     const btnMaskDef = $("btnMaskDef");
-    const btnReadd = $("btnReadd");
-    const filtersContainer = $("projectFilters");
-    const toggleInactive = $("toggleInactive");
 
-    if (!tabs || !detail || !inactiveList || !maskedCount || !lastSync) return;
+    if (!tabs || !detail || !maskedCount) return;
 
     const activeSplit = splitMasked(projectState.projects);
     const inactiveSplit = splitMasked(projectState.inactive);
-    const maskedItems = sortProjects([...activeSplit.maskedItems, ...inactiveSplit.maskedItems]);
     projectState.maskedCount = activeSplit.masked + inactiveSplit.masked;
 
     const visibleProjects = sortProjects(activeSplit.visible);
-    const visibleInactive = sortProjects(inactiveSplit.visible);
-
-    // Filtres (Actifs/Inactifs/Masqués)
-    if (filtersContainer) {
-      const filters = [
-        { id: "active", label: "Actifs", count: visibleProjects.length },
-        { id: "inactive", label: "Inactifs", count: visibleInactive.length },
-        { id: "masked", label: "Masqués", count: maskedItems.length },
-      ];
-      const btns = [];
-      filtersContainer.replaceChildren();
-      filters.forEach((f, idx) => {
-        const isActive = projectState.filter === f.id;
-        const btn = el("button", {
-          type: "button",
-          class: `pill filter-btn${isActive ? " active" : ""}`,
-          "data-filter": f.id,
-          "aria-pressed": isActive ? "true" : "false",
-          "aria-current": isActive ? "true" : "false",
-          text: `${f.label}${f.count !== undefined ? ` (${f.count})` : ""}`,
-        });
-        btn.addEventListener("click", () => {
-          if (projectState.filter === f.id) return;
-          projectState.filter = f.id;
-          projectState.selectedId = null;
-          projectState.lastInteractionWasKeyboard = true;
-          announce(`Filtre ${f.label} appliqué${f.count ? `, ${f.count} projets` : ""}.`);
-          renderProjects();
-        });
-        btn.addEventListener("keydown", (e) => {
-          if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-          e.preventDefault();
-          const nextIdx = e.key === "ArrowRight" ? (idx + 1) % filters.length : (idx - 1 + filters.length) % filters.length;
-          btns[nextIdx]?.focus();
-        });
-        filtersContainer.appendChild(btn);
-        btns.push(btn);
-      });
-    }
-
-    let currentList = visibleProjects;
-    if (projectState.filter === "inactive") currentList = visibleInactive;
-    else if (projectState.filter === "masked") currentList = maskedItems;
+    const currentList = visibleProjects;
 
     if (!projectState.selectedId && currentList.length) {
       projectState.selectedId = projectId(currentList[0]);
@@ -272,13 +222,8 @@
 
     tabs.replaceChildren();
     const tabButtons = [];
-    const emptyMessages = {
-      active: "Aucun projet actif",
-      inactive: "Aucun projet détecté sans activité",
-      masked: "Aucun projet masqué",
-    };
     if (!currentList.length) {
-      tabs.appendChild(el("div", { class: "muted small", text: emptyMessages[projectState.filter] || "Aucun projet" }));
+      tabs.appendChild(el("div", { class: "muted small", text: "Aucun projet actif" }));
     } else {
       for (let i = 0; i < currentList.length; i += 1) {
         const p = currentList[i];
@@ -330,8 +275,6 @@
     }
 
     const selected = currentList.find((p) => projectId(p) === projectState.selectedId);
-    const isInactiveFilter = projectState.filter === "inactive";
-    const isMaskedFilter = projectState.filter === "masked";
 
     detail.replaceChildren();
     detail.setAttribute("aria-labelledby", "");
@@ -339,7 +282,6 @@
       detail.appendChild(el("div", { class: "muted", text: "Sélectionne un projet." }));
       if (btnMaskTemp) btnMaskTemp.disabled = true;
       if (btnMaskDef) btnMaskDef.disabled = true;
-      if (btnReadd) btnReadd.disabled = true;
     } else {
       const selectedTabId = `project-tab-${projectId(selected)}`;
       detail.setAttribute("aria-labelledby", selectedTabId);
@@ -347,19 +289,11 @@
       detail.appendChild(el("div", { class: "small muted", text: `Clé: ${selected.project_key}` }));
       detail.appendChild(el("div", { class: "small muted", text: `Source: ${selected.source || "?"}` }));
       detail.appendChild(el("div", { class: "small muted", text: `Instance: ${selected.cloud_id || "default"}` }));
-      if (isMaskedFilter && selected.mask_type) {
-        detail.appendChild(el("div", { class: "small muted", text: `Masqué: ${selected.mask_type}` }));
-      }
       detail.appendChild(el("div", { class: "small muted", text: `Actif: ${selected.is_active === false ? "non" : "oui"}` }));
 
-      // Actions selon filtre
-      const maskDisabled = !projectState.selectedId || isInactiveFilter || isMaskedFilter;
+      const maskDisabled = !projectState.selectedId;
       if (btnMaskTemp) btnMaskTemp.disabled = maskDisabled;
       if (btnMaskDef) btnMaskDef.disabled = maskDisabled;
-
-      if (btnReadd) {
-        btnReadd.disabled = !isInactiveFilter;
-      }
     }
 
     const shouldFocusDetail = projectState.lastInteractionWasKeyboard
@@ -373,35 +307,8 @@
 
     projectState.lastInteractionWasKeyboard = false;
 
-    const inactiveIsOpen = projectState.inactiveOpen;
-    inactiveList.replaceChildren();
-    inactiveList.hidden = !inactiveIsOpen;
-    if (toggleInactive) toggleInactive.setAttribute("aria-expanded", inactiveIsOpen ? "true" : "false");
-    if (inactiveIsOpen) {
-      if (!visibleInactive.length) {
-        inactiveList.appendChild(el("div", { class: "muted small", text: "Aucun projet inactif" }));
-      } else {
-        for (const p of visibleInactive) {
-          const item = el("div", { class: "inactive-item" });
-          const meta = el("div", { class: "meta" }, [
-            el("strong", { text: p.project_key }),
-            el("span", { class: "muted", text: p.project_name || p.project_key }),
-            el("span", { class: "muted", text: `Instance: ${p.cloud_id || "default"}` }),
-          ]);
-          const btn = el("button", { type: "button", text: "Ré-ajouter" });
-          btn.addEventListener("click", () => addInactiveProject(p));
-          item.appendChild(meta);
-          item.appendChild(btn);
-          inactiveList.appendChild(item);
-        }
-      }
-    }
-
     maskedCount.textContent = projectState.maskedCount
       ? `Projets masqués: ${projectState.maskedCount}`
-      : "";
-    lastSync.textContent = projectState.lastSyncedAt
-      ? `Dernier refresh: ${formatTs(projectState.lastSyncedAt)}`
       : "";
   }
 
@@ -467,34 +374,6 @@
     announce("Projet ajouté.");
   }
 
-  async function addInactiveProject(p) {
-    const payload = {
-      project_key: p.project_key,
-      project_name: p.project_name || p.project_key,
-      source: "manual",
-      is_active: true,
-      cloud_id: p.cloud_id || null,
-    };
-
-    const r = await fetchJson("/po/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!r.ok) {
-      announce("Erreur lors de l’ajout du projet inactif.");
-      return;
-    }
-    await loadProjects();
-    announce("Projet inactif ajouté.");
-  }
-
-  async function readdSelected() {
-    if (projectState.filter !== "inactive") return;
-    const selected = projectState.inactive.find((p) => projectId(p) === projectState.selectedId);
-    if (!selected) return;
-    await addInactiveProject(selected);
-  }
 
   async function maskSelected(maskType) {
     const selected = projectState.projects.find((p) => projectId(p) === projectState.selectedId);
@@ -820,15 +699,6 @@
     if (btnMaskTemp) btnMaskTemp.addEventListener("click", () => maskSelected("temporaire"));
     const btnMaskDef = $("btnMaskDef");
     if (btnMaskDef) btnMaskDef.addEventListener("click", () => maskSelected("definitif"));
-    const btnReadd = $("btnReadd");
-    if (btnReadd) btnReadd.addEventListener("click", readdSelected);
-    const toggleInactive = $("toggleInactive");
-    if (toggleInactive) {
-      toggleInactive.addEventListener("click", () => {
-        projectState.inactiveOpen = !projectState.inactiveOpen;
-        renderProjects();
-      });
-    }
 
     const btnIssueQuick = $("btnIssueQuick");
     if (btnIssueQuick) btnIssueQuick.addEventListener("click", () => fetchIssue("quick"));

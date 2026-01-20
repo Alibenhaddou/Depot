@@ -46,6 +46,13 @@
           <div id="panelStatusVisible" class="status" aria-live="polite"></div>
         </section>
       </div>
+      <div class="inactive-block">
+        <button id="toggleInactive" type="button" aria-expanded="false" aria-controls="inactiveList" class="link-btn">
+          Projets détectés sans activité
+        </button>
+        <div class="small muted">Inactif = pas d’epic active. Vous pouvez ré-ajouter manuellement.</div>
+        <div id="inactiveList" class="inactive-list" hidden></div>
+      </div>
     </section>
 
     <noscript>
