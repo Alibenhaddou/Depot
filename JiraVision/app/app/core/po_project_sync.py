@@ -50,8 +50,10 @@ async def _fetch_reporter_projects(
 
 
 async def _has_active_epic(client: JiraClient, project_key: str) -> bool:
-    data = await client.search_jql(_active_epic_jql(project_key), max_results=1)
+    data = await client.search_jql(_active_epic_jql(project_key), max_results=10)
     issues = data.get("issues", []) if isinstance(data, dict) else []
+    statuses = [issue.get("fields", {}).get("status", {}).get("name") for issue in issues]
+    logger.info(f"[DEBUG] Statuts des epics pour le projet {project_key}: {statuses}")
     return len(issues) > 0
 
 

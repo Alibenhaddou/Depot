@@ -1,12 +1,8 @@
 from __future__ import annotations
-
 from typing import Any, Dict, List
-
 import pytest
-
 from app.core import po_project_store
 from app.core import po_project_sync
-
 
 class FakeJiraClient:
     def __init__(self, access_token: str, cloud_id: str, timeout: int = 30):
