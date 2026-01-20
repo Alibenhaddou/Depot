@@ -9,14 +9,24 @@ from app.clients.jira import JiraClient
 from app.core import po_project_store
 
 logger = logging.getLogger(__name__)
+if not logger.hasHandlers():
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('[%(asctime)s] %(levelname)s %(name)s: %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
-_EPIC_DONE_STATUSES = {"Annulé", "Done"}
+_EPIC_DONE_STATUSES = {
+    "Annulé", "Done", "Terminé", "Fermé", "Closed", "Résolu", "Resolved", "Abandonné", "Cancelled"
+}
 
 
-def _reporter_jql(account_id: str) -> str:
+
+def _active_projects_jql(account_id: str) -> str:
     return (
         f'reporter = "{account_id}" '
-        "AND type in (Story, Etude, Projet)"
+        'AND type in (Story, Etude) '
+        'AND status NOT IN ("Done", "Annulé")'
     )
 
 
@@ -44,17 +54,33 @@ async def _fetch_reporter_projects(
     client: JiraClient,
     account_id: str,
 ) -> Dict[str, Dict[str, str]]:
-    data = await client.search_jql(_reporter_jql(account_id), max_results=50)
+    # Nouvelle JQL pour tickets actifs
+    jql = _active_projects_jql(account_id)
+    logger.info(f"[DEBUG] JQL projets actifs: {jql}")
+    data = await client.search_jql(jql, max_results=100)
     issues = data.get("issues", []) if isinstance(data, dict) else []
-    return _extract_projects(issues)
+    # Extraire les projets distincts à partir des tickets trouvés
+    projects = {}
+    for issue in issues:
+        fields = issue.get("fields", {}) or {}
+        proj = fields.get("project", {}) or {}
+        key = proj.get("key")
+        name = proj.get("name") or key
+        if key:
+            projects[key] = {"project_key": key, "project_name": name}
+    logger.info(f"[DEBUG] Projets actifs trouvés: {list(projects.keys())}")
+    return projects
 
 
 async def _has_active_epic(client: JiraClient, project_key: str) -> bool:
-    data = await client.search_jql(_active_epic_jql(project_key), max_results=10)
-    issues = data.get("issues", []) if isinstance(data, dict) else []
+    jql = _active_epic_jql(project_key)
+    logger.info(f"[DEBUG] JQL utilisée pour le projet {project_key}: {jql}")
+    data = await client.search_jql(jql, max_results=10)
+    logger.info(f"[DEBUG] Résultat brut Jira pour {project_key}: {data}")
+    issues = data.get("issues", [])
     statuses = [issue.get("fields", {}).get("status", {}).get("name") for issue in issues]
     logger.info(f"[DEBUG] Statuts des epics pour le projet {project_key}: {statuses}")
-    return len(issues) > 0
+    return bool(issues)
 
 
 async def sync_projects_for_user(
@@ -76,6 +102,7 @@ async def sync_projects_for_user(
     active_projects: List[Dict[str, Any]] = []
     inactive_projects: List[Dict[str, Any]] = []
 
+
     for cloud_id in cloud_ids:
         token_entry = tokens_by_cloud.get(cloud_id) or {}
         access_token = token_entry.get("access_token")
@@ -85,15 +112,10 @@ async def sync_projects_for_user(
         client = JiraClient(access_token=access_token, cloud_id=cloud_id)
         try:
             projects = await _fetch_reporter_projects(client, jira_account_id)
+            logger.info(f"[DEBUG] Projets actifs pour cloud_id={cloud_id}, user={jira_account_id}: {list(projects.keys())}")
             for project_key, project_info in projects.items():
                 project_id = f"{cloud_id}:{project_key}"
                 found_ids.add(project_id)
-
-                try:
-                    has_epic = await _has_active_epic(client, project_key)
-                except httpx.HTTPStatusError as exc:
-                    logger.warning("Jira epic check failed: %s", exc)
-                    has_epic = True
 
                 prev = existing.get(project_id)
                 prev_mask = (prev or {}).get("mask_type") or "none"
@@ -108,13 +130,9 @@ async def sync_projects_for_user(
                     cloud_id=cloud_id,
                     mask_type=mask_type,
                     masked_at=masked_at,
-                    is_active=has_epic,
+                    is_active=True,
                 )
-
-                if has_epic:
-                    active_projects.append(project)
-                else:
-                    inactive_projects.append(project)
+                active_projects.append(project)
         except PermissionError:
             logger.warning("Jira token expired for cloud_id=%s", cloud_id)
         except httpx.HTTPStatusError as exc:

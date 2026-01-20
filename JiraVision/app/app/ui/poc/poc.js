@@ -809,7 +809,8 @@
 
     renderTopbar(s.json);
     refreshSites();
-    await loadProjects();
+    // Synchronisation automatique des projets PO au démarrage
+    await refreshProjects();
 
     const btnRefresh = $("btnProjectsRefresh");
     if (btnRefresh) btnRefresh.addEventListener("click", refreshProjects);
