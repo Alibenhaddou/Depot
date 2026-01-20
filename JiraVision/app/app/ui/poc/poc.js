@@ -207,8 +207,7 @@
     if (!tabs || !detail || !maskedCount) return;
 
     const activeSplit = splitMasked(projectState.projects);
-    const inactiveSplit = splitMasked(projectState.inactive);
-    projectState.maskedCount = activeSplit.masked + inactiveSplit.masked;
+    projectState.maskedCount = activeSplit.masked;
 
     const visibleProjects = sortProjects(activeSplit.visible);
     const currentList = visibleProjects;

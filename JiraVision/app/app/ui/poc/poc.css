@@ -89,22 +89,14 @@ a:focus-visible {
   transform: translateY(0);
 }
 
-.btn-mask {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
-  border: none;
-}
-
-.btn-mask:hover:not(:disabled) {
-  background: linear-gradient(135deg, #5568d3 0%, #653a91 100%);
-}
-
+.btn-mask,
 .btn-primary {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
   border: none;
 }
 
+.btn-mask:hover:not(:disabled),
 .btn-primary:hover:not(:disabled) {
   background: linear-gradient(135deg, #5568d3 0%, #653a91 100%);
 }
