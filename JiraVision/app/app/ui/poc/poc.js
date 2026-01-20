@@ -117,7 +117,6 @@
     inactive: [],
     lastSyncedAt: null,
     selectedId: null,
-    maskedCount: 0,
     lastSelectedId: null,
     lastInteractionWasKeyboard: false,
   };
@@ -206,9 +205,6 @@
     if (!tabs || !detail) return;
 
     const activeSplit = splitMasked(projectState.projects);
-    const inactiveSplit = splitMasked(projectState.inactive);
-    projectState.maskedCount = activeSplit.masked + inactiveSplit.masked;
-
     const visibleProjects = sortProjects(activeSplit.visible);
 
     // Toujours afficher uniquement les projets actifs
@@ -292,7 +288,7 @@
       detail.appendChild(el("div", { class: "small muted", text: `Instance: ${selected.cloud_id || "default"}` }));
       detail.appendChild(el("div", { class: "small muted", text: `Actif: ${selected.is_active === false ? "non" : "oui"}` }));
 
-      // Actions - always enable mask buttons for selected active projects
+      // Enable mask buttons when a project is selected
       const maskDisabled = !projectState.selectedId;
       if (btnMaskTemp) btnMaskTemp.disabled = maskDisabled;
       if (btnMaskDef) btnMaskDef.disabled = maskDisabled;
