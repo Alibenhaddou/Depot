@@ -154,6 +154,19 @@ def test_oauth_callback_success(monkeypatch):
 
     monkeypatch.setattr("app.routes.auth._get_accessible_resources", fake_accessible)
 
+    class FakeJiraClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def get_myself(self):
+            return {"accountId": "u1", "displayName": "User One"}
+
+        async def aclose(self):
+            return None
+
+    monkeypatch.setattr("app.routes.auth.JiraClient", FakeJiraClient)
+    monkeypatch.setattr("app.routes.auth.upsert_user_from_jira", lambda *a, **k: {"user_id": "u1"})
+
     r = client.get("/oauth/callback?code=code&state=s123", follow_redirects=False)
     assert r.status_code in (307, 302)
     assert captured["sess"]["tokens_by_cloud"]["c1"]["access_token"] == "atok"

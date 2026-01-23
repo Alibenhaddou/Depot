@@ -144,6 +144,19 @@ def test_oauth_callback_success(monkeypatch):
 
     monkeypatch.setattr("app.routes.auth._get_accessible_resources", fake_accessible)
 
+    class FakeJiraClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def get_myself(self):
+            return {"accountId": "u1", "displayName": "User One"}
+
+        async def aclose(self):
+            return None
+
+    monkeypatch.setattr("app.routes.auth.JiraClient", FakeJiraClient)
+    monkeypatch.setattr("app.routes.auth.upsert_user_from_jira", lambda *a, **k: {"user_id": "u1"})
+
     captured = {}
 
     def fake_set_session(sid, sess):

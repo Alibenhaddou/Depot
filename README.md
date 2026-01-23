@@ -64,6 +64,24 @@ export OTEL_EXPORTER_OTLP_ENDPOINT="http://otel-collector:4318/v1/traces"
 ```
 
 Les métriques Prometheus sont exposées sur `/metrics` pour les deux services.
+
+### Version des services
+
+Chaque service expose sa version via un endpoint dédié :
+
+- API principale : `/version`
+- ai-service : `/version`
+
+Exemple de réponse (API) :
+
+```json
+{
+	"service": "api",
+	"version": "dev",
+	"python_version": "3.12.3",
+	"build_date": "2026-01-19T12:00:00Z"
+}
+```
 - Générer le rapport de coverage HTML et XML :
 
 ```bash

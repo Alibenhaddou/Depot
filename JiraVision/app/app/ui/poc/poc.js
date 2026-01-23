@@ -5,170 +5,23 @@
   /* utils                                                               */
   /* ------------------------------------------------------------------ */
 
-  const tryJson = (text) => { try { return JSON.parse(text); } catch { return null; } };
+  let announceTimeoutId;
+  const announce = (msg) => {
+    const node = $("panelStatus");
+    const visible = $("panelStatusVisible");
 
-  const safePath = (p, fallback = "/") =>
-    (typeof p === "string" && p.startsWith("/")) ? p : fallback;
+    if (announceTimeoutId !== undefined) {
+      window.clearTimeout(announceTimeoutId);
+    }
 
-  const withCacheBuster = (url) => {
-    const u = new URL(url, window.location.origin);
-    u.searchParams.set("_ts", String(Date.now()));
-    return u.toString();
+    if (node) node.textContent = "";
+    if (visible) visible.textContent = "";
+
+    announceTimeoutId = window.setTimeout(() => {
+      if (node) node.textContent = msg;
+      if (visible) visible.textContent = msg;
+    }, 50);
   };
-
-  const fetchText = async (url, opts = {}) => {
-    const res = await fetch(withCacheBuster(url), {
-      credentials: "same-origin",
-      cache: "no-store",
-      ...opts,
-    });
-    const text = await res.text();
-    return { ok: res.ok, status: res.status, statusText: res.statusText, text };
-  };
-
-  const fetchJson = async (url, opts = {}) => {
-    const r = await fetchText(url, opts);
-    return { ...r, json: tryJson(r.text) };
-  };
-
-  const el = (tag, attrs = {}, children = []) => {
-    const n = document.createElement(tag);
-    for (const [k, v] of Object.entries(attrs)) {
-      if (k === "text") n.textContent = v;
-      else n.setAttribute(k, v);
-    }
-    for (const c of children) n.appendChild(c);
-    return n;
-  };
-
-  /* ------------------------------------------------------------------ */
-  /* top bar                                                             */
-  /* ------------------------------------------------------------------ */
-
-  function renderTopbar(state) {
-    const logoutArea = $("logoutArea");
-    if (!logoutArea) return;
-
-    const logged = Boolean(state.logged_in);
-    logoutArea.replaceChildren();
-
-    if (!logged) return;
-
-    const a = el("a", { href: safePath(state.logout_url, "/logout") });
-    const btn = el("button", { type: "button", text: "Logout" });
-    a.appendChild(btn);
-    logoutArea.appendChild(a);
-  }
-
-  function renderInstanceList(sites) {
-    const list = $("instanceList");
-    if (!list) return;
-
-    list.replaceChildren();
-
-    if (!sites.length) {
-      list.appendChild(el("span", { class: "pill inactive", text: "Aucune" }));
-      return;
-    }
-
-    for (const s of sites) {
-      const label = s.name || s.url || s.id;
-      const isActive = activeCloudIds.has(s.id);
-      const cls = isActive ? "pill active" : "pill inactive";
-      const btn = el("button", {
-        type: "button",
-        class: cls,
-        text: label,
-        "data-cloud-id": s.id,
-        "aria-pressed": isActive ? "true" : "false",
-      });
-      btn.addEventListener("click", () => toggleCloudId(s.id));
-      list.appendChild(btn);
-    }
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* jira multi-instance                                                  */
-  /* ------------------------------------------------------------------ */
-
-  const activeCloudIds = new Set();
-  let knownSites = [];
-
-  function setView(hasInstances) {
-    const appContent = $("appContent");
-    if (!appContent) return;
-    appContent.classList.toggle("hidden", !hasInstances);
-  }
-
-  function toggleCloudId(id) {
-    if (activeCloudIds.has(id)) activeCloudIds.delete(id);
-    else activeCloudIds.add(id);
-    renderInstanceList(knownSites);
-  }
-
-  async function refreshSites() {
-    const r = await fetchJson("/jira/instances");
-
-    if (!r.ok || !r.json) {
-      renderInstanceList([]);
-      setView(false);
-      return;
-    }
-
-    knownSites = r.json.jira_sites || [];
-
-    if (!knownSites.length) {
-      renderInstanceList([]);
-      setView(false);
-      window.location.href = "/auth";
-      return;
-    }
-
-    const knownIds = new Set(knownSites.map((s) => s.id));
-    if (!activeCloudIds.size) {
-      for (const id of knownIds) activeCloudIds.add(id);
-    } else {
-      for (const id of Array.from(activeCloudIds)) {
-        if (!knownIds.has(id)) activeCloudIds.delete(id);
-      }
-      if (!activeCloudIds.size) {
-        for (const id of knownIds) activeCloudIds.add(id);
-      }
-    }
-
-    renderInstanceList(knownSites);
-    setView(true);
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* boot                                                                 */
-  /* ------------------------------------------------------------------ */
-
-  async function boot() {
-    const s = await fetchJson("/ui/state");
-    if (!s.ok || !s.json) {
-      console.error("Erreur /ui/state", s.status);
-      return;
-    }
-
-    if (!s.json.logged_in) {
-      window.location.href = "/auth";
-      return;
-    }
-
-    renderTopbar(s.json);
-    refreshSites();
-  }
-
-  window.addEventListener("DOMContentLoaded", () => {
-    boot().catch((e) => console.error("Boot error", e));
-  });
-})();(() => {
-  const $ = (id) => document.getElementById(id);
-
-  /* ------------------------------------------------------------------ */
-  /* utils                                                               */
-  /* ------------------------------------------------------------------ */
 
   const tryJson = (text) => { try { return JSON.parse(text); } catch { return null; } };
 
@@ -259,6 +112,17 @@
 
   const activeCloudIds = new Set();
   let knownSites = [];
+  const projectState = {
+    projects: [],
+    inactive: [],
+    lastSyncedAt: null,
+    selectedId: null,
+    maskedCount: 0,
+    lastSelectedId: null,
+    lastInteractionWasKeyboard: false,
+    filter: "active",
+    inactiveOpen: false,
+  };
 
   function setView(hasInstances) {
     const appContent = $("appContent");
@@ -279,6 +143,376 @@
     if (activeCloudIds.has(id)) activeCloudIds.delete(id);
     else activeCloudIds.add(id);
     renderInstanceList(knownSites);
+    renderProjects();
+  }
+
+  function projectId(p) {
+    return `${p.cloud_id || "default"}:${p.project_key}`;
+  }
+
+  function formatTs(ts) {
+    if (!ts) return "";
+    const d = new Date(Number(ts) * 1000);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleString("fr-FR");
+  }
+
+  function projectScore(p) {
+    const candidates = [
+      Number(p.story_etude_open_assigned_count),
+      Number(p.story_open_assigned_count),
+      Number(p.etude_open_assigned_count),
+    ];
+    for (const v of candidates) {
+      if (Number.isFinite(v)) return v;
+    }
+    return 0;
+  }
+
+  function sortProjects(list) {
+    return [...list].sort((a, b) => {
+      const scoreDiff = projectScore(b) - projectScore(a);
+      if (scoreDiff !== 0) return scoreDiff;
+      return (a.project_key || "").localeCompare(b.project_key || "");
+    });
+  }
+
+  function isVisibleForInstances(p) {
+    if (!p.cloud_id) return true;
+    if (!activeCloudIds.size) return true;
+    return activeCloudIds.has(p.cloud_id);
+  }
+
+  function splitMasked(items) {
+    let masked = 0;
+    const visible = [];
+    const maskedItems = [];
+    for (const p of items) {
+      if (!isVisibleForInstances(p)) continue;
+      if (p.mask_type && p.mask_type !== "none") {
+        masked += 1;
+        maskedItems.push(p);
+        continue;
+      }
+      visible.push(p);
+    }
+    return { visible, masked, maskedItems };
+  }
+
+  function renderProjects() {
+    const tabs = $("projectTabs");
+    const detail = $("projectDetail");
+    const inactiveList = $("inactiveList");
+    const maskedCount = $("maskedCount");
+    const lastSync = $("lastSync");
+    const btnMaskTemp = $("btnMaskTemp");
+    const btnMaskDef = $("btnMaskDef");
+    const btnReadd = $("btnReadd");
+    const filtersContainer = $("projectFilters");
+    const toggleInactive = $("toggleInactive");
+
+    if (!tabs || !detail || !inactiveList || !maskedCount || !lastSync) return;
+
+    const activeSplit = splitMasked(projectState.projects);
+    const inactiveSplit = splitMasked(projectState.inactive);
+    const maskedItems = sortProjects([...activeSplit.maskedItems, ...inactiveSplit.maskedItems]);
+    projectState.maskedCount = activeSplit.masked + inactiveSplit.masked;
+
+    const visibleProjects = sortProjects(activeSplit.visible);
+    const visibleInactive = sortProjects(inactiveSplit.visible);
+
+    // Filtres (Actifs/Inactifs/Masqués)
+    if (filtersContainer) {
+      const filters = [
+        { id: "active", label: "Actifs", count: visibleProjects.length },
+        { id: "inactive", label: "Inactifs", count: visibleInactive.length },
+        { id: "masked", label: "Masqués", count: maskedItems.length },
+      ];
+      const btns = [];
+      filtersContainer.replaceChildren();
+      filters.forEach((f, idx) => {
+        const isActive = projectState.filter === f.id;
+        const btn = el("button", {
+          type: "button",
+          class: `pill filter-btn${isActive ? " active" : ""}`,
+          "data-filter": f.id,
+          "aria-pressed": isActive ? "true" : "false",
+          "aria-current": isActive ? "true" : "false",
+          text: `${f.label}${f.count !== undefined ? ` (${f.count})` : ""}`,
+        });
+        btn.addEventListener("click", () => {
+          if (projectState.filter === f.id) return;
+          projectState.filter = f.id;
+          projectState.selectedId = null;
+          projectState.lastInteractionWasKeyboard = true;
+          announce(`Filtre ${f.label} appliqué${f.count ? `, ${f.count} projets` : ""}.`);
+          renderProjects();
+        });
+        btn.addEventListener("keydown", (e) => {
+          if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+          e.preventDefault();
+          const nextIdx = e.key === "ArrowRight" ? (idx + 1) % filters.length : (idx - 1 + filters.length) % filters.length;
+          btns[nextIdx]?.focus();
+        });
+        filtersContainer.appendChild(btn);
+        btns.push(btn);
+      });
+    }
+
+    let currentList = visibleProjects;
+    if (projectState.filter === "inactive") currentList = visibleInactive;
+    else if (projectState.filter === "masked") currentList = maskedItems;
+
+    if (!projectState.selectedId && currentList.length) {
+      projectState.selectedId = projectId(currentList[0]);
+    } else {
+      const stillThere = currentList.some((p) => projectId(p) === projectState.selectedId);
+      if (!stillThere) projectState.selectedId = currentList[0] ? projectId(currentList[0]) : null;
+    }
+
+    tabs.replaceChildren();
+    const tabButtons = [];
+    const emptyMessages = {
+      active: "Aucun projet actif",
+      inactive: "Aucun projet détecté sans activité",
+      masked: "Aucun projet masqué",
+    };
+    if (!currentList.length) {
+      tabs.appendChild(el("div", { class: "muted small", text: emptyMessages[projectState.filter] || "Aucun projet" }));
+    } else {
+      for (let i = 0; i < currentList.length; i += 1) {
+        const p = currentList[i];
+        const pid = projectId(p);
+        const isSelected = pid === projectState.selectedId;
+        const btn = el("button", {
+          type: "button",
+          class: `project-tab${isSelected ? " active" : ""}`,
+          text: p.project_key,
+          role: "tab",
+          "aria-selected": isSelected ? "true" : "false",
+          "aria-controls": "projectDetail",
+          id: `project-tab-${pid}`,
+          tabindex: isSelected ? "0" : "-1",
+        });
+        btn.addEventListener("click", () => {
+          projectState.selectedId = pid;
+          projectState.lastInteractionWasKeyboard = false;
+          renderProjects();
+        });
+        btn.addEventListener("keydown", (e) => {
+          const focusTab = (idx) => {
+            tabButtons.forEach((b, j) => {
+              b.tabIndex = j === idx ? 0 : -1;
+            });
+            tabButtons[idx]?.focus();
+          };
+
+          if (e.key === "ArrowRight") {
+            e.preventDefault();
+            const next = tabButtons[i + 1] || tabButtons[0];
+            const idx = tabButtons.indexOf(next);
+            if (idx >= 0) focusTab(idx);
+          } else if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            const prev = tabButtons[i - 1] || tabButtons[tabButtons.length - 1];
+            const idx = tabButtons.indexOf(prev);
+            if (idx >= 0) focusTab(idx);
+          } else if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+            e.preventDefault();
+            projectState.selectedId = pid;
+            projectState.lastInteractionWasKeyboard = true;
+            renderProjects();
+          }
+        });
+        tabs.appendChild(btn);
+        tabButtons.push(btn);
+      }
+    }
+
+    const selected = currentList.find((p) => projectId(p) === projectState.selectedId);
+    const isInactiveFilter = projectState.filter === "inactive";
+    const isMaskedFilter = projectState.filter === "masked";
+
+    detail.replaceChildren();
+    detail.setAttribute("aria-labelledby", "");
+    if (!selected) {
+      detail.appendChild(el("div", { class: "muted", text: "Sélectionne un projet." }));
+      if (btnMaskTemp) btnMaskTemp.disabled = true;
+      if (btnMaskDef) btnMaskDef.disabled = true;
+      if (btnReadd) btnReadd.disabled = true;
+    } else {
+      const selectedTabId = `project-tab-${projectId(selected)}`;
+      detail.setAttribute("aria-labelledby", selectedTabId);
+      detail.appendChild(el("div", { text: `${selected.project_name || selected.project_key}` }));
+      detail.appendChild(el("div", { class: "small muted", text: `Clé: ${selected.project_key}` }));
+      detail.appendChild(el("div", { class: "small muted", text: `Source: ${selected.source || "?"}` }));
+      detail.appendChild(el("div", { class: "small muted", text: `Instance: ${selected.cloud_id || "default"}` }));
+      if (isMaskedFilter && selected.mask_type) {
+        detail.appendChild(el("div", { class: "small muted", text: `Masqué: ${selected.mask_type}` }));
+      }
+      detail.appendChild(el("div", { class: "small muted", text: `Actif: ${selected.is_active === false ? "non" : "oui"}` }));
+
+      // Actions selon filtre
+      const maskDisabled = !projectState.selectedId || isInactiveFilter || isMaskedFilter;
+      if (btnMaskTemp) btnMaskTemp.disabled = maskDisabled;
+      if (btnMaskDef) btnMaskDef.disabled = maskDisabled;
+
+      if (btnReadd) {
+        btnReadd.disabled = !isInactiveFilter;
+      }
+    }
+
+    const shouldFocusDetail = projectState.lastInteractionWasKeyboard
+      && projectState.selectedId
+      && projectState.selectedId !== projectState.lastSelectedId;
+    projectState.lastSelectedId = projectState.selectedId;
+    if (shouldFocusDetail && detail) detail.focus();
+
+    const activeTab = tabButtons.find((b) => b.getAttribute("aria-selected") === "true");
+    if (projectState.lastInteractionWasKeyboard && !shouldFocusDetail && activeTab) activeTab.focus();
+
+    projectState.lastInteractionWasKeyboard = false;
+
+    const inactiveIsOpen = projectState.inactiveOpen;
+    inactiveList.replaceChildren();
+    inactiveList.hidden = !inactiveIsOpen;
+    if (toggleInactive) toggleInactive.setAttribute("aria-expanded", inactiveIsOpen ? "true" : "false");
+    if (inactiveIsOpen) {
+      if (!visibleInactive.length) {
+        inactiveList.appendChild(el("div", { class: "muted small", text: "Aucun projet inactif" }));
+      } else {
+        for (const p of visibleInactive) {
+          const item = el("div", { class: "inactive-item" });
+          const meta = el("div", { class: "meta" }, [
+            el("strong", { text: p.project_key }),
+            el("span", { class: "muted", text: p.project_name || p.project_key }),
+            el("span", { class: "muted", text: `Instance: ${p.cloud_id || "default"}` }),
+          ]);
+          const btn = el("button", { type: "button", text: "Ré-ajouter" });
+          btn.addEventListener("click", () => addInactiveProject(p));
+          item.appendChild(meta);
+          item.appendChild(btn);
+          inactiveList.appendChild(item);
+        }
+      }
+    }
+
+    maskedCount.textContent = projectState.maskedCount
+      ? `Projets masqués: ${projectState.maskedCount}`
+      : "";
+    lastSync.textContent = projectState.lastSyncedAt
+      ? `Dernier refresh: ${formatTs(projectState.lastSyncedAt)}`
+      : "";
+  }
+
+  async function loadProjects() {
+    const r = await fetchJson("/po/projects");
+    if (r.status === 401) {
+      window.location.href = "/auth";
+      return;
+    }
+    if (!r.ok || !r.json) {
+      announce("Erreur lors du chargement des projets.");
+      return;
+    }
+
+    projectState.projects = r.json.projects || [];
+    projectState.inactive = r.json.inactive_projects || [];
+    projectState.lastSyncedAt = r.json.last_synced_at || null;
+    renderProjects();
+    announce("Projets chargés.");
+  }
+
+  async function refreshProjects() {
+    const resetBox = $("resetDefinitif");
+    const reset = Boolean(resetBox && resetBox.checked);
+    const r = await fetchJson("/po/projects/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reset_definitif: reset }),
+    });
+    if (!r.ok || !r.json) {
+      announce("Erreur lors du rafraîchissement.");
+      return;
+    }
+
+    projectState.projects = r.json.projects || [];
+    projectState.inactive = r.json.inactive_projects || [];
+    projectState.lastSyncedAt = r.json.last_synced_at || null;
+    renderProjects();
+    announce("Projets rafraîchis.");
+  }
+
+  async function addProject() {
+    const key = window.prompt("Clé projet (ex: ABC)");
+    if (!key) return;
+    const name = window.prompt("Nom du projet", key) || key;
+    const payload = {
+      project_key: key.trim(),
+      project_name: name.trim(),
+      source: "manual",
+      is_active: true,
+    };
+
+    const r = await fetchJson("/po/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) {
+      announce("Erreur lors de l’ajout du projet.");
+      return;
+    }
+    await loadProjects();
+    announce("Projet ajouté.");
+  }
+
+  async function addInactiveProject(p) {
+    const payload = {
+      project_key: p.project_key,
+      project_name: p.project_name || p.project_key,
+      source: "manual",
+      is_active: true,
+      cloud_id: p.cloud_id || null,
+    };
+
+    const r = await fetchJson("/po/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) {
+      announce("Erreur lors de l’ajout du projet inactif.");
+      return;
+    }
+    await loadProjects();
+    announce("Projet inactif ajouté.");
+  }
+
+  async function readdSelected() {
+    if (projectState.filter !== "inactive") return;
+    const selected = projectState.inactive.find((p) => projectId(p) === projectState.selectedId);
+    if (!selected) return;
+    await addInactiveProject(selected);
+  }
+
+  async function maskSelected(maskType) {
+    const selected = projectState.projects.find((p) => projectId(p) === projectState.selectedId);
+    if (!selected) return;
+    const url = `/po/projects/${encodeURIComponent(selected.project_key)}${selected.cloud_id ? `?cloud_id=${encodeURIComponent(selected.cloud_id)}` : ""}`;
+    const r = await fetchJson(url,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mask_type: maskType, cloud_id: selected.cloud_id || null }),
+      }
+    );
+    if (!r.ok) {
+      announce("Erreur lors du masquage.");
+      return;
+    }
+    await loadProjects();
+    announce("Projet masqué.");
   }
 
   async function streamSse(url, options, onEvent) {
@@ -353,6 +587,7 @@
 
     renderInstanceList(knownSites);
     setView(true);
+    loadProjects();
   }
 
   /* ------------------------------------------------------------------ */
@@ -574,17 +809,43 @@
 
     renderTopbar(s.json);
     refreshSites();
+    await loadProjects();
 
-    $("btnIssueQuick").addEventListener("click", () => fetchIssue("quick"));
-    $("btnIssueDetail").addEventListener("click", () => fetchIssue("detail"));
-    $("issue").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        fetchIssue("quick");
-      }
-    });
-    $("btnSearch").addEventListener("click", searchJql);
-    $("btnAi").addEventListener("click", aiSummary);
+    const btnRefresh = $("btnProjectsRefresh");
+    if (btnRefresh) btnRefresh.addEventListener("click", refreshProjects);
+    const btnAdd = $("btnProjectAdd");
+    if (btnAdd) btnAdd.addEventListener("click", addProject);
+    const btnMaskTemp = $("btnMaskTemp");
+    if (btnMaskTemp) btnMaskTemp.addEventListener("click", () => maskSelected("temporaire"));
+    const btnMaskDef = $("btnMaskDef");
+    if (btnMaskDef) btnMaskDef.addEventListener("click", () => maskSelected("definitif"));
+    const btnReadd = $("btnReadd");
+    if (btnReadd) btnReadd.addEventListener("click", readdSelected);
+    const toggleInactive = $("toggleInactive");
+    if (toggleInactive) {
+      toggleInactive.addEventListener("click", () => {
+        projectState.inactiveOpen = !projectState.inactiveOpen;
+        renderProjects();
+      });
+    }
+
+    const btnIssueQuick = $("btnIssueQuick");
+    if (btnIssueQuick) btnIssueQuick.addEventListener("click", () => fetchIssue("quick"));
+    const btnIssueDetail = $("btnIssueDetail");
+    if (btnIssueDetail) btnIssueDetail.addEventListener("click", () => fetchIssue("detail"));
+    const issueInput = $("issue");
+    if (issueInput) {
+      issueInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          fetchIssue("quick");
+        }
+      });
+    }
+    const btnSearch = $("btnSearch");
+    if (btnSearch) btnSearch.addEventListener("click", searchJql);
+    const btnAi = $("btnAi");
+    if (btnAi) btnAi.addEventListener("click", aiSummary);
   }
 
   window.addEventListener("DOMContentLoaded", () => {

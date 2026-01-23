@@ -20,6 +20,7 @@ Microservice dédié au traitement IA de JiraVision : proxy LLM, auth inter-serv
 | GET | `/health` | Liveness | N/A |
 | GET | `/ready` | Readiness | N/A |
 | GET | `/metrics` | Metrics Prometheus | N/A |
+| GET | `/version` | Version du service (semver), date de build, version Python | N/A |
 | POST | `/ai/summarize-jql` | Résumé de tickets | Token inter-service (si activé) |
 | POST | `/ai/analyze-issue` | Analyse ticket | Token inter-service (si activé) |
 | POST | `/ai/analyze-issue/stream` | Analyse en streaming (SSE) | Token inter-service (si activé) |
@@ -82,13 +83,17 @@ Microservice dédié au traitement IA de JiraVision : proxy LLM, auth inter-serv
 ### `/ai/analyze-issue/stream`
 
 Réponse **SSE** avec events :
-- `log`
-- `result`
+- `log` (progression)
+- `error` (JSON avec `code` et `message`)
+- `result` (JSON avec `text`)
 
 Exemple :
 ```
 event: log
 data: "Début de l'analyse"
+
+event: error
+data: {"code":502,"message":"LLM indisponible"}
 
 event: result
 data: {"text":"Analyse progressive - résultat exemple"}
@@ -98,6 +103,66 @@ data: {"text":"Analyse progressive - résultat exemple"}
 
 - Metrics Prometheus : `/metrics`.
 - Tracing OpenTelemetry si `OTEL_EXPORTER_OTLP_ENDPOINT` défini.
+
+### Version du service
+
+Endpoint: `GET /version`
+
+Exemple d’appel:
+
+```
+curl -s http://localhost:8001/version | jq
+```
+
+Exemple de réponse:
+
+```json
+{
+  "service": "ai-service",
+  "version": "dev",
+  "python_version": "3.12.3",
+  "build_date": "2026-01-19T12:00:00Z"
+}
+```
+
+#### Mécanisme de versionnement
+
+- Source de version :
+  - `APP_VERSION` si défini dans l'environnement (prioritaire).
+  - Sinon, lecture du fichier `VERSION` à la racine du dépôt (répertoire `JiraVision/VERSION`).
+- Date de build :
+  - `APP_BUILD_DATE` si défini (format ISO UTC avec suffixe `Z`).
+  - Sinon, horodatage courant en UTC, formaté comme `YYYY-MM-DDTHH:MM:SSZ`.
+- Champ `python_version` : version de l'interpréteur Python utilisé par le service.
+
+Conseils déploiement (CI/CD / Docker):
+- Définir `APP_VERSION` (ex: `1.2.3`) et `APP_BUILD_DATE` (ex: `2026-01-19T12:00:00Z`) via variables d'environnement.
+- En développement local, le fichier `JiraVision/VERSION` peut contenir `dev`.
+
+#### CI/CD (exemples)
+
+- docker-compose (override):
+  ```yaml
+  services:
+    ai-service:
+      environment:
+        APP_VERSION: "${GIT_TAG:-dev}"
+        APP_BUILD_DATE: "${BUILD_DATE:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}"
+  ```
+
+- GitHub Actions (env pour l'image ou le déploiement):
+  ```yaml
+  env:
+    APP_VERSION: ${{ github.ref_name }}
+    APP_BUILD_DATE: ${{ steps.meta.outputs.build_date }}
+
+  steps:
+    - name: Set build date
+      id: meta
+      run: echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+    - name: Build image
+      run: docker build --build-arg APP_VERSION=$APP_VERSION --build-arg APP_BUILD_DATE=$APP_BUILD_DATE .
+  ```
 
 ## Erreurs & codes
 

@@ -154,10 +154,8 @@ sequenceDiagram
 
 - Le service IA est conçu pour être **externalisé** sans changer l’API publique.
 - Le proxy `/ai/*` permet une migration progressive et du canary.
-- Ajout futur recommandé : base de données par service (schéma dédié ou DB dédiée).
-
+- Ajout futur recommandé : base de données par service (schéma dédié ou DB dédiée).- UI conforme RGAA (panel Projets PO) : tablist/tab/tabpanel, roving tabindex, navigation clavier, aria-live.
 ## Journal des évolutions
 
 | Date | Version | Description | Auteur | Référence |
-|------|---------|-------------|--------|-----------|
-| 2026-01-16 | initial | Documentation de l’architecture technique. | | |
+|------|---------|-------------|--------|-----------|| 2026-01-19 | US-20 | Ajout note conformité RGAA UI (panel Projets PO). | | PR #42 || 2026-01-16 | initial | Documentation de l’architecture technique. | | |

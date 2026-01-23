@@ -5,6 +5,8 @@ from pathlib import Path
 import time
 
 from fastapi import FastAPI, Request, Response
+import sys
+from datetime import datetime, UTC
 from fastapi.staticfiles import StaticFiles
 
 from app.routes.auth import router as auth_router
@@ -12,6 +14,7 @@ from app.routes.auth_ui import router as auth_ui_router
 from app.routes.jira import router as jira_router
 from app.routes.ai import router as ai_router
 from app.routes.ui import router as ui_router  # version "choix 2" => prefix="/ui"
+from app.routes.po_projects import router as po_projects_router
 from app.routes.debug import router as debug_router
 from fastapi.responses import RedirectResponse
 from prometheus_client import (
@@ -73,6 +76,23 @@ def create_app() -> FastAPI:
     async def root() -> RedirectResponse:
         return RedirectResponse("/ui")
 
+    @app.get("/version")
+    async def version():
+        ver = os.getenv("APP_VERSION")
+        if not ver:
+            try:
+                repo_root = Path(__file__).resolve().parents[2]
+                ver = (repo_root / "VERSION").read_text().strip()
+            except Exception:
+                ver = "dev"
+        build_date = os.getenv("APP_BUILD_DATE") or datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        return {
+            "service": "api",
+            "version": ver,
+            "python_version": sys.version.split()[0],
+            "build_date": build_date,
+        }
+
     app_dir = Path(__file__).resolve().parent
 
     # Static assets (séparation maximale)
@@ -95,6 +115,9 @@ def create_app() -> FastAPI:
 
     # Jira endpoints (issue/search/select/instances)
     app.include_router(jira_router)
+
+    # PO projects endpoints
+    app.include_router(po_projects_router)
 
     # AI endpoints
     app.include_router(ai_router)

@@ -25,6 +25,7 @@ Service principal de JiraVision exposant l’API métier, la UI POC, l’OAuth A
 |---|---|---|---|
 | GET | `/metrics` | Metrics Prometheus | N/A |
 | GET | `/` | Redirect vers `/ui` | N/A |
+| GET | `/version` | Version du service (semver), date de build, version Python | N/A |
 
 ### Auth (Atlassian OAuth)
 
@@ -47,6 +48,23 @@ Service principal de JiraVision exposant l’API métier, la UI POC, l’OAuth A
 |---|---|---|---|
 | GET | `/ui` | UI POC (redirige si non connecté) | Cookie session |
 | GET | `/ui/state` | État UI (logged_in, debug links) | Cookie session |
+
+**Conformité RGAA (Projets PO)** :
+- Rôles ARIA : `tablist`, `tab`, `tabpanel` pour la navigation par onglets.
+- Roving `tabindex` : un seul onglet focusable (tabindex="0"), les autres en tabindex="-1".
+- Navigation clavier : flèches gauche/droite pour parcourir, Enter/Espace pour activer.
+- `aria-live="polite"` avec région `role="status"` pour annonces accessibles.
+- Focus logique : le panneau de détail reçoit le focus uniquement après activation clavier (pas après clic souris).
+- `aria-labelledby` dynamique : le tabpanel référence l'onglet actif via son id.
+
+### Projets PO
+
+| Méthode | Endpoint | Description | Auth |
+|---|---|---|---|
+| GET | `/po/projects` | Liste projets actifs/inactifs + `last_synced_at` (chargement initial UI) | Cookie session |
+| POST | `/po/projects` | Ajout manuel d’un projet actif | Cookie session |
+| DELETE | `/po/projects/{project_key}?cloud_id=<id>` | Masquage d'un projet (temporaire/définitif). Query param `cloud_id` optionnel pour désambiguïser en multi-instance. | Cookie session |
+| POST | `/po/projects/refresh` | Synchronisation Jira et mise à jour actifs/inactifs | Cookie session |
 
 ### Jira
 
@@ -75,6 +93,17 @@ Service principal de JiraVision exposant l’API métier, la UI POC, l’OAuth A
 | GET | `/debug/routes` | Liste de routes debug | ENABLE_DEBUG_ROUTES=true |
 
 ## Contrats principaux
+
+### `/po/projects`
+
+**Réponse (extrait)**
+```json
+{
+  "projects": [{"project_key":"ABC","project_name":"Alpha","cloud_id":null,"mask_type":"none"}],
+  "inactive_projects": [{"project_key":"DEF","project_name":"Delta","cloud_id":"<id>"}],
+  "last_synced_at": 1700000000
+}
+```
 
 ### `/ai/summarize-jql`
 
@@ -124,14 +153,17 @@ Service principal de JiraVision exposant l’API métier, la UI POC, l’OAuth A
 ### `/ai/analyze-issue/stream`
 
 Réponse **SSE** avec events :
-- `log` (progression)
-- `error` (code + message)
-- `result` (résultat final)
+- `log` (progression textuelle)
+- `error` (JSON avec `code` et `message` en cas d'erreur)
+- `result` (résultat final JSON avec `text`)
 
 Exemple (format SSE) :
 ```
 event: log
 data: "Début de l'analyse"
+
+event: error
+data: {"code":404,"message":"Ticket introuvable"}
 
 event: result
 data: {"text":"..."}
@@ -154,6 +186,66 @@ data: {"text":"..."}
 - Metrics Prometheus : `/metrics`.
 - Tracing OpenTelemetry si `OTEL_EXPORTER_OTLP_ENDPOINT` défini.
 
+### Version du service
+
+Endpoint: `GET /version`
+
+Exemple d’appel:
+
+```
+curl -s http://localhost:8000/version | jq
+```
+
+Exemple de réponse:
+
+```json
+{
+  "service": "api",
+  "version": "dev",
+  "python_version": "3.12.3",
+  "build_date": "2026-01-19T12:00:00Z"
+}
+```
+
+#### Mécanisme de versionnement
+
+- Source de version :
+  - `APP_VERSION` si défini dans l'environnement (prioritaire).
+  - Sinon, lecture du fichier `VERSION` à la racine du dépôt (répertoire `JiraVision/VERSION`).
+- Date de build :
+  - `APP_BUILD_DATE` si défini (format ISO UTC avec suffixe `Z`).
+  - Sinon, horodatage courant en UTC, formaté comme `YYYY-MM-DDTHH:MM:SSZ`.
+- Champ `python_version` : version de l'interpréteur Python utilisé par le service.
+
+Conseils déploiement (CI/CD / Docker):
+- Définir `APP_VERSION` (ex: `1.2.3`) et `APP_BUILD_DATE` (ex: `2026-01-19T12:00:00Z`) via variables d'environnement.
+- En développement local, le fichier `JiraVision/VERSION` peut contenir `dev`.
+
+#### CI/CD (exemples)
+
+- docker-compose (override):
+  ```yaml
+  services:
+    api:
+      environment:
+        APP_VERSION: "${GIT_TAG:-dev}"
+        APP_BUILD_DATE: "${BUILD_DATE:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}"
+  ```
+
+- GitHub Actions (env pour l'image ou le déploiement):
+  ```yaml
+  env:
+    APP_VERSION: ${{ github.ref_name }}
+    APP_BUILD_DATE: ${{ steps.meta.outputs.build_date }}
+
+  steps:
+    - name: Set build date
+      id: meta
+      run: echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+    - name: Build image
+      run: docker build --build-arg APP_VERSION=$APP_VERSION --build-arg APP_BUILD_DATE=$APP_BUILD_DATE .
+  ```
+
 ## Évolutions attendues
 
 - Externalisation complète du traitement IA vers `ai-service`.
@@ -163,5 +255,5 @@ data: {"text":"..."}
 ## Journal des évolutions
 
 | Date | Version | Description | Auteur | Référence |
-|------|---------|-------------|--------|-----------|
+|------|---------|-------------|--------|-----------|| 2026-01-19 | US-20 | Conformité RGAA panel Projets PO : roving tabindex, navigation clavier (flèches + Enter/Espace), tabpanel avec aria-labelledby, aria-live fiabilisé, focus logique clavier uniquement. Désambiguïsation DELETE avec cloud_id en query param. | | PR #42 || 2026-01-19 | doc | Ajout des endpoints Projets PO + chargement initial UI (GET /po/projects). | | |
 | 2026-01-16 | initial | Documentation fonctionnelle complète du service API. | | |

@@ -23,6 +23,41 @@
           <div id="logoutArea" class="logout-area"></div>
         </div>
       </div>
+
+      <div class="app-grid">
+        <section class="panel panel-wide panel-projects">
+          <div class="panel-head">
+            <div class="panel-title">Projets PO</div>
+            <div class="panel-actions">
+              <label class="inline-check">
+                <input type="checkbox" id="resetDefinitif" />
+                Réintégrer masqués définitifs
+              </label>
+              <button id="btnProjectsRefresh" type="button">Synchroniser Jira</button>
+              <button id="btnProjectAdd" type="button">Forcer l'ajout</button>
+            </div>
+            <div class="small muted" id="maskedCount"></div>
+            <div class="small muted" id="lastSync"></div>
+          </div>
+          <div id="projectFilters" class="project-filters" role="group" aria-label="Filtres projets"></div>
+          <div id="projectTabs" class="project-tabs" role="tablist" aria-label="Projets PO"></div>
+          <div id="projectDetail" class="project-detail" role="tabpanel" tabindex="-1" aria-label="Détail du projet"></div>
+          <div class="project-actions">
+            <button id="btnMaskTemp" type="button" disabled>Masquer temporaire</button>
+            <button id="btnMaskDef" type="button" disabled>Masquer définitif</button>
+            <button id="btnReadd" type="button" class="ghost" disabled>Ré-ajouter</button>
+          </div>
+          <div id="panelStatus" class="sr-only" role="status" aria-live="polite"></div>
+          <div id="panelStatusVisible" class="status" aria-live="polite"></div>
+          <div class="inactive-block">
+            <button id="toggleInactive" type="button" aria-expanded="false" aria-controls="inactiveList" class="link-btn">
+              Projets détectés sans activité
+            </button>
+            <div class="small muted">Inactif = pas d’epic active. Vous pouvez ré-ajouter manuellement.</div>
+            <div id="inactiveList" class="inactive-list" hidden></div>
+          </div>
+        </section>
+      </div>
     </section>
 
     <noscript>
@@ -30,6 +65,6 @@
     </noscript>
   </main>
 
-  <script src="/ui/assets/poc.js"></script>
+  <script src="/ui/assets/poc.js?v=20260119a"></script>
 </body>
 </html>
