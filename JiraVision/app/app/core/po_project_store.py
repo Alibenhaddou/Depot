@@ -3,7 +3,7 @@ import logging
 import time
 from typing import Any, Dict, List, Optional
 
-from app.core.redis import redis_client
+from app.core.redis import redis_client, _ensure_redis_available, _mark_redis_unavailable, _local_store
 
 logger = logging.getLogger(__name__)
 
@@ -30,18 +30,23 @@ def _project_id(project_key: str, cloud_id: Optional[str]) -> str:
 
 
 def _get_raw(key: str) -> Optional[str]:
+    if not _ensure_redis_available():
+        return _local_store.get(key)
     try:
         return redis_client.get(key)
     except Exception:
-        logger.warning("Redis not available, falling back to in-memory store")
+        _mark_redis_unavailable()
         return _local_store.get(key)
 
 
 def _set_raw(key: str, payload: str) -> None:
+    if not _ensure_redis_available():
+        _local_store[key] = payload
+        return
     try:
         redis_client.set(key, payload)
     except Exception:
-        logger.warning("Redis write failed, using in-memory store")
+        _mark_redis_unavailable()
         _local_store[key] = payload
 
 

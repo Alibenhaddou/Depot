@@ -4,7 +4,7 @@ import types
 import importlib
 
 # Ensure the package 'app' (JiraVision/app) is importable during tests
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app"))
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "app"))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
@@ -16,7 +16,7 @@ if ROOT not in sys.path:
 # constructed during imports
 os.environ.setdefault("atlassian_client_id", "test-id")
 os.environ.setdefault("atlassian_client_secret", "test-secret")
-os.environ.setdefault("atlassian_redirect_uri", "http://localhost/cb")
+os.environ.setdefault("atlassian_redirect_uri", "")
 os.environ.setdefault("atlassian_scopes", "read:jira")
 os.environ.setdefault("app_secret_key", "secret-for-tests")
 

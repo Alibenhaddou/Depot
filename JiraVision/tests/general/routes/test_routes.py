@@ -144,18 +144,16 @@ def test_oauth_callback_success(monkeypatch):
 
     monkeypatch.setattr("app.routes.auth._get_accessible_resources", fake_accessible)
 
-    class FakeJiraClient:
-        def __init__(self, *a, **k):
-            pass
+    # stub user info fetch
+    async def fake_get_user_info(token, cloud_id):
+        return {
+            "accountId": "user123",
+            "displayName": "Test User",
+            "emailAddress": "test@example.com",
+            "avatarUrls": {"48x48": "https://avatar.url"},
+        }
 
-        async def get_myself(self):
-            return {"accountId": "u1", "displayName": "User One"}
-
-        async def aclose(self):
-            return None
-
-    monkeypatch.setattr("app.routes.auth.JiraClient", FakeJiraClient)
-    monkeypatch.setattr("app.routes.auth.upsert_user_from_jira", lambda *a, **k: {"user_id": "u1"})
+    monkeypatch.setattr("app.routes.auth._get_user_info", fake_get_user_info)
 
     captured = {}
 
@@ -168,6 +166,69 @@ def test_oauth_callback_success(monkeypatch):
     assert r.status_code in (307, 302)
     assert captured["sess"]["tokens_by_cloud"]["c1"]["access_token"] == "atok"
     assert captured["sess"]["active_cloud_id"] == "c1"
+    assert captured["sess"]["user_info"]["accountId"] == "user123"
+    assert captured["sess"]["user_info"]["displayName"] == "Test User"
+
+
+def test_oauth_callback_success_without_user_info(monkeypatch):
+    """Test OAuth callback succeeds even if user info fetch fails."""
+    # prepare session with state
+    session = {"state": "s123"}
+    monkeypatch.setattr("app.routes.auth.ensure_session", lambda req, resp: "sid-oauth")
+    monkeypatch.setattr("app.routes.auth.get_session", lambda sid: session)
+
+    # stub token exchange
+    async def fake_post(*a, **k):
+        return DummyResp(json_data={"access_token": "atok"})
+
+    class FakeAsyncClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, *a, **k):
+            return await fake_post()
+
+        async def get(self, *a, **k):
+            return DummyResp(json_data=[])
+
+        async def aclose(self):
+            return None
+
+    monkeypatch.setattr("app.routes.auth.httpx.AsyncClient", FakeAsyncClient)
+
+    # stub accessible resources
+    async def fake_accessible(token):
+        return [
+            {"id": "c1", "url": "https://x", "scopes": ["read:jira-work"], "name": "C1"}
+        ]
+
+    monkeypatch.setattr("app.routes.auth._get_accessible_resources", fake_accessible)
+
+    # stub user info fetch to return None (failure case)
+    async def fake_get_user_info_fail(token, cloud_id):
+        return None
+
+    monkeypatch.setattr("app.routes.auth._get_user_info", fake_get_user_info_fail)
+
+    captured = {}
+
+    def fake_set_session(sid, sess):
+        captured["sess"] = sess
+
+    monkeypatch.setattr("app.routes.auth.set_session", fake_set_session)
+
+    r = client.get("/oauth/callback?code=code&state=s123", follow_redirects=False)
+    assert r.status_code in (307, 302)
+    assert captured["sess"]["tokens_by_cloud"]["c1"]["access_token"] == "atok"
+    assert captured["sess"]["active_cloud_id"] == "c1"
+    # user_info should not be present when fetch fails
+    assert "user_info" not in captured["sess"]
 
 
 def test_oauth_callback_bad_state(monkeypatch):

@@ -12,9 +12,7 @@ from itsdangerous import BadSignature
 
 from app.core.config import settings
 from app.core.redis import get_session, set_session
-from app.core.po_user import upsert_user_from_jira
 from app.auth.session_store import ensure_session, destroy_session, state_serializer
-from app.clients.jira import JiraClient
 
 router = APIRouter(tags=["auth"])
 
@@ -31,12 +29,13 @@ OAUTH_STATE_MAX_AGE = 60 * 10  # 10 minutes
 def _redirect_uri(request: Request) -> str:
     """Retourne l'URI de redirection à utiliser pour OAuth.
 
-    Priorité : variable d'env `ATLASSIAN_REDIRECT_URI` si définie, sinon construction
-    depuis l'objet `request` (utile dans des environnements dynamiques type GitLab).
+    Priorité : variable d'env `ATLASSIAN_REDIRECT_URI` si définie et non vide, 
+    sinon construction depuis l'objet `request` (utile dans des environnements 
+    dynamiques type Codespace, GitLab, etc.).
     """
-    env_uri = getattr(settings, "atlassian_redirect_uri", None)
-    if env_uri:
-        return env_uri
+    redirect_uri = getattr(settings, "atlassian_redirect_uri", None)
+    if redirect_uri and redirect_uri.strip():
+        return redirect_uri.strip()
     # fallback : construire l'URL absolue pour la route `oauth_callback`
     return str(request.url_for("oauth_callback"))
 
@@ -103,7 +102,6 @@ async def login(request: Request) -> RedirectResponse:
 
     session = get_session(sid) or {}
     session["state"] = state
-    session["redirect_uri"] = params["redirect_uri"]
     set_session(sid, session)
 
     resp.set_cookie(
@@ -135,13 +133,12 @@ async def oauth_callback(
     if not code or not state or not expected_state or state != expected_state:
         raise HTTPException(400, "State invalide ou code manquant")
 
-    redirect_uri = session.get("redirect_uri") or _redirect_uri(request)
     payload = {
         "grant_type": "authorization_code",
         "client_id": settings.atlassian_client_id,
         "client_secret": settings.atlassian_client_secret,
         "code": code,
-        "redirect_uri": redirect_uri,
+        "redirect_uri": _redirect_uri(request),
     }
 
     async with httpx.AsyncClient(timeout=30) as client:
@@ -212,31 +209,6 @@ async def oauth_callback(
     session["access_token"] = active_entry["access_token"]
     session["site_url"] = active_entry["site_url"]
     session["scopes"] = active_entry.get("scopes", [])
-
-    # Sync Jira user into DB and attach to session
-    jira_client = JiraClient(access_token=active_entry["access_token"], cloud_id=active_cid)
-    try:
-        me = await jira_client.get_myself()
-    except PermissionError:
-        await jira_client.aclose()
-        raise HTTPException(502, "Erreur Jira (auth utilisateur)")
-    except httpx.HTTPStatusError:
-        await jira_client.aclose()
-        raise HTTPException(502, "Erreur Jira (myself)")
-    except Exception:
-        await jira_client.aclose()
-        raise HTTPException(502, "Erreur Jira (myself)")
-    else:
-        await jira_client.aclose()
-
-    try:
-        user = upsert_user_from_jira(me)
-    except ValueError:
-        raise HTTPException(502, "Erreur Jira (accountId manquant)")
-
-    session["jira_account_id"] = user.get("jira_account_id")
-    session["jira_display_name"] = user.get("display_name")
-    session["jira_email"] = user.get("email")
 
     session.pop("state", None)
     set_session(sid, session)
