@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     atlassian_client_id: str
     atlassian_client_secret: str
-    atlassian_redirect_uri: str
+    atlassian_redirect_uri: str | None = None
     atlassian_scopes: str
 
     app_secret_key: str
