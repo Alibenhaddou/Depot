@@ -270,6 +270,77 @@ td {
   align-items: center;
 }
 
+.filters-and-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.project-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.global-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.compact-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 10px;
+  border: 1px solid #ccd3de;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.compact-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.compact-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.compact-btn.ghost {
+  background: transparent;
+  border-color: #e2e8f0;
+}
+
+.btn-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+@media (max-width: 860px) {
+  .filters-and-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .global-actions {
+    width: 100%;
+  }
+  
+  .global-actions .compact-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
 .inline-check {
   display: inline-flex;
   gap: 8px;

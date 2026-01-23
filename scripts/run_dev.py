@@ -13,22 +13,21 @@ candidates = [
     os.path.abspath("JiraVision/app/app"),
 ]
 
+success = False
 for p in candidates:
-    print("Trying sys.path insert:", p)
     sys.path.insert(0, p)
     importlib.invalidate_caches()
     try:
         mod = importlib.import_module("app.main")
-        print("Imported app.main from", p)
+        print(f"[INFO] app.main importé depuis : {p}")
         app = getattr(mod, "app")
         import uvicorn
-
         uvicorn.run(app, host="0.0.0.0", port=8000)
+        success = True
         break
-    except Exception as exc:
-        print("Failed with", p, type(exc), exc)
-        # remove the inserted path and try next
+    except Exception:
+        # Ne rien afficher pour les essais ratés
         if sys.path and sys.path[0] == p:
             sys.path.pop(0)
-else:
-    print("Could not import 'app.main' with any candidate PYTHONPATH.\nTried:", candidates)
+if not success:
+    print("[ERREUR] Impossible d'importer 'app.main' avec les chemins testés :\n", candidates)

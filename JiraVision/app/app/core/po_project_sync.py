@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List
 
 import httpx
 
@@ -9,27 +9,33 @@ from app.clients.jira import JiraClient
 from app.core import po_project_store
 
 logger = logging.getLogger(__name__)
+if not logger.hasHandlers():
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('[%(asctime)s] %(levelname)s %(name)s: %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
-_EPIC_DONE_STATUSES = {"Annulé", "Done"}
 
-
-def _reporter_jql(account_id: str) -> str:
+def _active_projects_jql(account_id: str) -> str:
     return (
         f'reporter = "{account_id}" '
-        "AND type in (Story, Etude, Projet)"
+        'AND type in (Story, Etude) '
+        'AND status NOT IN ("Done", "Annulé")'
     )
 
 
-def _active_epic_jql(project_key: str) -> str:
-    statuses = ", ".join(f'"{s}"' for s in sorted(_EPIC_DONE_STATUSES))
-    return (
-        f'project = "{project_key}" AND type = Epic '
-        f"AND status NOT IN ({statuses})"
-    )
-
-
-def _extract_projects(issues: Iterable[Dict[str, Any]]) -> Dict[str, Dict[str, str]]:
-    projects: Dict[str, Dict[str, str]] = {}
+async def _fetch_reporter_projects(
+    client: JiraClient,
+    account_id: str,
+) -> Dict[str, Dict[str, str]]:
+    # Nouvelle JQL pour tickets actifs
+    jql = _active_projects_jql(account_id)
+    logger.debug(f"JQL projets actifs: {jql}")
+    data = await client.search_jql(jql, max_results=100)
+    issues = data.get("issues", []) if isinstance(data, dict) else []
+    # Extraire les projets distincts à partir des tickets trouvés
+    projects = {}
     for issue in issues:
         fields = issue.get("fields", {}) or {}
         proj = fields.get("project", {}) or {}
@@ -37,22 +43,8 @@ def _extract_projects(issues: Iterable[Dict[str, Any]]) -> Dict[str, Dict[str, s
         name = proj.get("name") or key
         if key:
             projects[key] = {"project_key": key, "project_name": name}
+    logger.debug(f"Projets actifs trouvés: {list(projects.keys())}")
     return projects
-
-
-async def _fetch_reporter_projects(
-    client: JiraClient,
-    account_id: str,
-) -> Dict[str, Dict[str, str]]:
-    data = await client.search_jql(_reporter_jql(account_id), max_results=50)
-    issues = data.get("issues", []) if isinstance(data, dict) else []
-    return _extract_projects(issues)
-
-
-async def _has_active_epic(client: JiraClient, project_key: str) -> bool:
-    data = await client.search_jql(_active_epic_jql(project_key), max_results=1)
-    issues = data.get("issues", []) if isinstance(data, dict) else []
-    return len(issues) > 0
 
 
 async def sync_projects_for_user(
@@ -83,15 +75,10 @@ async def sync_projects_for_user(
         client = JiraClient(access_token=access_token, cloud_id=cloud_id)
         try:
             projects = await _fetch_reporter_projects(client, jira_account_id)
+            logger.debug(f"Projets actifs pour cloud_id={cloud_id}, user={jira_account_id}: {list(projects.keys())}")
             for project_key, project_info in projects.items():
                 project_id = f"{cloud_id}:{project_key}"
                 found_ids.add(project_id)
-
-                try:
-                    has_epic = await _has_active_epic(client, project_key)
-                except httpx.HTTPStatusError as exc:
-                    logger.warning("Jira epic check failed: %s", exc)
-                    has_epic = True
 
                 prev = existing.get(project_id)
                 prev_mask = (prev or {}).get("mask_type") or "none"
@@ -106,13 +93,9 @@ async def sync_projects_for_user(
                     cloud_id=cloud_id,
                     mask_type=mask_type,
                     masked_at=masked_at,
-                    is_active=has_epic,
+                    is_active=True,
                 )
-
-                if has_epic:
-                    active_projects.append(project)
-                else:
-                    inactive_projects.append(project)
+                active_projects.append(project)
         except PermissionError:
             logger.warning("Jira token expired for cloud_id=%s", cloud_id)
         except httpx.HTTPStatusError as exc:

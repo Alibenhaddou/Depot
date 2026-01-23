@@ -117,7 +117,6 @@
     inactive: [],
     lastSyncedAt: null,
     selectedId: null,
-    maskedCount: 0,
     lastSelectedId: null,
     lastInteractionWasKeyboard: false,
     filter: "active",
@@ -203,20 +202,17 @@
     const tabs = $("projectTabs");
     const detail = $("projectDetail");
     const inactiveList = $("inactiveList");
-    const maskedCount = $("maskedCount");
-    const lastSync = $("lastSync");
     const btnMaskTemp = $("btnMaskTemp");
     const btnMaskDef = $("btnMaskDef");
     const btnReadd = $("btnReadd");
     const filtersContainer = $("projectFilters");
     const toggleInactive = $("toggleInactive");
 
-    if (!tabs || !detail || !inactiveList || !maskedCount || !lastSync) return;
+    if (!tabs || !detail || !inactiveList) return;
 
     const activeSplit = splitMasked(projectState.projects);
     const inactiveSplit = splitMasked(projectState.inactive);
     const maskedItems = sortProjects([...activeSplit.maskedItems, ...inactiveSplit.maskedItems]);
-    projectState.maskedCount = activeSplit.masked + inactiveSplit.masked;
 
     const visibleProjects = sortProjects(activeSplit.visible);
     const visibleInactive = sortProjects(inactiveSplit.visible);
@@ -396,13 +392,6 @@
         }
       }
     }
-
-    maskedCount.textContent = projectState.maskedCount
-      ? `Projets masqués: ${projectState.maskedCount}`
-      : "";
-    lastSync.textContent = projectState.lastSyncedAt
-      ? `Dernier refresh: ${formatTs(projectState.lastSyncedAt)}`
-      : "";
   }
 
   async function loadProjects() {
@@ -424,12 +413,10 @@
   }
 
   async function refreshProjects() {
-    const resetBox = $("resetDefinitif");
-    const reset = Boolean(resetBox && resetBox.checked);
     const r = await fetchJson("/po/projects/refresh", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reset_definitif: reset }),
+      body: JSON.stringify({ reset_definitif: false }),
     });
     if (!r.ok || !r.json) {
       announce("Erreur lors du rafraîchissement.");
@@ -809,7 +796,8 @@
 
     renderTopbar(s.json);
     refreshSites();
-    await loadProjects();
+    // Synchronisation automatique des projets PO au démarrage
+    await refreshProjects();
 
     const btnRefresh = $("btnProjectsRefresh");
     if (btnRefresh) btnRefresh.addEventListener("click", refreshProjects);
