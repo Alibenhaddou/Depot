@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import secrets
 import time
 from typing import Any, Dict, Optional, List, cast
@@ -47,13 +48,13 @@ async def _get_accessible_resources(access_token: str) -> Any:
         r = await client.get(ACCESSIBLE_RESOURCES_URL, headers=headers)
 
     # Debug: log status and body (truncated) for diagnosing missing Jira resources
+    logger = logging.getLogger(__name__)
     try:
         txt = r.text
     except Exception:
         txt = "(no body)"
-    import logging
 
-    logging.getLogger(__name__).info(
+    logger.info(
         "Accessible-resources response: status=%s, body=%s", r.status_code, txt[:400]
     )
 
@@ -71,6 +72,23 @@ def _pick_jira_resources(resources: List[Dict[str, Any]]) -> List[Dict[str, Any]
                 jira.append(res)
     return jira
 
+
+async def _get_user_info(access_token: str, cloud_id: str) -> Optional[Dict[str, Any]]:
+    """Fetch user information from Jira /myself endpoint.
+    
+    Returns user info dict on success, None if it fails (non-critical).
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        client = JiraClient(access_token=access_token, cloud_id=cloud_id, timeout=30)
+        user_info = await client.get_current_user()
+        await client.aclose()
+        logger.info("Successfully fetched user info: accountId=%s", user_info.get("accountId"))
+        return cast(Dict[str, Any], user_info)
+    except Exception as e:
+        logger.warning("Failed to fetch user info from /myself: %s", str(e))
+        return None
 
 def _expected_state_from_cookie(request: Request) -> Optional[str]:
     raw = request.cookies.get("oauth_state")
@@ -152,13 +170,13 @@ async def oauth_callback(
         )
 
     # Debug logging: status and presence of token (do NOT log the token itself)
+    logger = logging.getLogger(__name__)
     try:
         txt = r.text
     except Exception:
         txt = "(no body)"
-    import logging
 
-    logging.getLogger(__name__).info(
+    logger.info(
         "Token endpoint response: status=%s, body=%s", r.status_code, txt[:200]
     )
 
@@ -167,14 +185,14 @@ async def oauth_callback(
 
     tok = r.json()
     access_token = tok.get("access_token")
-    logging.getLogger(__name__).info("Token endpoint returned access_token=%s", bool(access_token))
+    logger.info("Token endpoint returned access_token=%s", bool(access_token))
     if not access_token:
         raise HTTPException(400, "Réponse token inattendue")
 
     resources = await _get_accessible_resources(access_token)
-    logging.getLogger(__name__).info("Accessible resources count: %s", len(resources))
+    logger.info("Accessible resources count: %s", len(resources))
     jira_resources = _pick_jira_resources(resources)
-    logging.getLogger(__name__).info("Jira resources found: %s", [r.get("id") for r in jira_resources])
+    logger.info("Jira resources found: %s", [r.get("id") for r in jira_resources])
     if not jira_resources:
         raise HTTPException(400, "Aucune ressource Jira trouvée")
 
@@ -207,6 +225,21 @@ async def oauth_callback(
 
     active_cid = session["active_cloud_id"]
     active_entry = session["tokens_by_cloud"][active_cid]
+
+    # Fetch user information from Jira /myself endpoint (US#12)
+    logger = logging.getLogger(__name__)
+    user_info = await _get_user_info(access_token, active_cid)
+    if user_info:
+        session["user_info"] = {
+            "accountId": user_info.get("accountId"),
+            "displayName": user_info.get("displayName"),
+            "emailAddress": user_info.get("emailAddress"),
+            "avatarUrls": user_info.get("avatarUrls"),
+        }
+        logger.info(
+            "User info stored in session: accountId=%s", 
+            user_info.get("accountId")
+        )
 
     # compat / confort (à garder tant que le reste du code l'utilise)
     session["access_token"] = active_entry["access_token"]
@@ -241,13 +274,12 @@ async def oauth_callback(
     session.pop("state", None)
     set_session(sid, session)
 
-    import logging
-    logging.getLogger(__name__).info("Session after token exchange for sid=%s: %s", sid, session)
+    logger.info("Session after token exchange for sid=%s: %s", sid, session)
 
     resp = RedirectResponse(url=POST_LOGIN_REDIRECT)
     ensure_session(request, resp)
     # log cookies set on response
-    logging.getLogger(__name__).info(
+    logger.info(
         "Response cookies after login: %s", resp.headers.get("set-cookie")
     )
     resp.delete_cookie("oauth_state", path="/")

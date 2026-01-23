@@ -127,7 +127,8 @@ class JiraClient:
                 return await self._request("POST", "/search", json_body=body)
             raise
 
-    async def get_myself(self) -> Any:
+    async def get_current_user(self) -> Any:
+        """Fetch the current user's profile from Jira /myself endpoint."""
         return await self._request("GET", "/myself")
 
 
