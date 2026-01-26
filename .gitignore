@@ -19,6 +19,7 @@ JiraVision/sessions.json
 
 # Logs
 uvicorn_server.log
+JiraVision/uvicorn.log
 
 # Editor backups / stray files
 Coucou~
@@ -26,6 +27,12 @@ Coucou~
 # IDE / Editor
 .vscode/
 .idea/
+
+# Local virtualenv
+.venv/
+
+# VS Code / Copilot / project-local settings that may contain secrets
+JiraVision/settings.json
 
 # macOS
 .DS_Store

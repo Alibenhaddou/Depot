@@ -1,0 +1,8 @@
+{
+  // Exemple de configuration VS Code (à copier en `settings.json` en local)
+  // IMPORTANT: ne mettez jamais de secrets (tokens, API keys) dans ce fichier.
+  "files.autoSave": "afterDelay",
+  "editor.suggestSelection": "first",
+  "python.defaultInterpreterPath": "/usr/local/bin/python3.11",
+  "sonarlint.ideLabsEnabled": true
+}

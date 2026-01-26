@@ -1,13 +1,18 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from __future__ import annotations
+
 from pathlib import Path
-from pydantic import field_validator
 from typing import Any, Literal
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
+    # Keep the configuration portable: resolve the repo-local `.env`.
+    # File is located at `JiraVision/.env`.
     model_config = SettingsConfigDict(env_file=str(BASE_DIR / ".env"), extra="ignore")
 
     atlassian_client_id: str

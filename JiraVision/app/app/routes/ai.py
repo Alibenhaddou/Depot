@@ -10,9 +10,9 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.auth.session_store import ensure_session
-from app.core.redis import get_session
-from app.core.config import settings
+from ..auth.session_store import ensure_session
+from ..core.redis import get_session
+from ..core.config import settings
 from app.core.ai_token import generate_ai_token
 from app.clients.jira import JiraClient, select_cloud_id
 import os
@@ -123,6 +123,9 @@ def _extract_links(fields: Dict[str, Any], limit: int) -> List[Dict[str, Any]]:
     return [link for link in out if link.get("key")]
 
 
+Dependency = Dict[str, Any]
+
+
 def _sse(event: str, data: Dict[str, Any] | str) -> str:
     """Format a Server-Sent Events (SSE) line for an event.
 
@@ -150,7 +153,9 @@ async def _llm_step(
 
 
 @router.post("/token")
-async def ai_token(request: Request, response: Response, body: AiTokenBody) -> Dict[str, Any]:
+async def ai_token(
+    request: Request, response: Response, body: AiTokenBody
+) -> Dict[str, Any]:
     # Issue a short-lived token for ai-service (used by the proxy client).
     sid = ensure_session(request, response)
     session = get_session(sid) or {}
@@ -272,7 +277,11 @@ async def analyze_issue(
     ai_url = os.getenv("AI_SERVICE_URL")
     if ai_url:
         # Keep API as a thin proxy when ai-service is enabled.
-        payload_remote = {"issue_key": body.issue_key, "cloud_id": chosen_cloud, "max_comments": body.max_comments}
+        payload_remote = {
+            "issue_key": body.issue_key,
+            "cloud_id": chosen_cloud,
+            "max_comments": body.max_comments,
+        }
         try:
             res = await post_json("/ai/analyze-issue", payload_remote)
         except httpx.HTTPStatusError as e:
@@ -398,7 +407,8 @@ async def analyze_issue_stream(
 
     client = JiraClient(access_token=entry["access_token"], cloud_id=chosen_cloud)
 
-    # If ai-service configured, proxy the streaming call and avoid backend Jira calls here
+    # If ai-service is configured, proxy the streaming call.
+    # This prevents duplicate Jira calls in the main API.
     ai_url = os.getenv("AI_SERVICE_URL")
     if ai_url:
         # Proxy SSE stream from ai-service as-is.
@@ -406,11 +416,17 @@ async def analyze_issue_stream(
             try:
                 async for chunk in stream_post(
                     "/ai/analyze-issue/stream",
-                    {"issue_key": body.issue_key, "cloud_id": chosen_cloud, "max_comments": body.max_comments},
+                    {
+                        "issue_key": body.issue_key,
+                        "cloud_id": chosen_cloud,
+                        "max_comments": body.max_comments,
+                    },
                 ):
                     yield chunk
             except Exception:
-                yield _sse("error", {"code": 502, "message": "Erreur ai-service (stream)"})
+                yield _sse(
+                    "error", {"code": 502, "message": "Erreur ai-service (stream)"}
+                )
 
         return StreamingResponse(remote_stream(), media_type="text/event-stream")
 
@@ -470,7 +486,7 @@ async def analyze_issue_stream(
             )
 
         # build payload
-        payload_local = {
+        payload_local: Dict[str, Any] = {
             "issue": {
                 "key": issue.get("key"),
                 "summary": fields.get("summary"),
@@ -486,6 +502,9 @@ async def analyze_issue_stream(
             "dependencies": [],
         }
 
+        deps = payload_local["dependencies"]
+        assert isinstance(deps, list)
+
         links = _extract_links(fields, body.max_links)
         if links:
             yield _sse(
@@ -499,7 +518,7 @@ async def analyze_issue_stream(
             key = link.get("key")
             if not key:
                 continue
-            payload_local["dependencies"].append(
+            deps.append(
                 {
                     "key": key,
                     "relation": link.get("type"),
@@ -549,7 +568,7 @@ async def analyze_issue_stream(
                         f"- {d.get('key')} ({d.get('relation')} {d.get('direction')}): "
                         f"{d.get('summary')} [{d.get('status')}]"
                     )
-                    for d in payload_local["dependencies"]
+                    for d in deps
                 )
                 or "Aucune dependance."
             )

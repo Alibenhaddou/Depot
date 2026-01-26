@@ -41,24 +41,30 @@ async def metrics_middleware(request: Request, call_next):
     start = time.perf_counter()
     response = await call_next(request)
     elapsed = time.perf_counter() - start
-    REQUEST_COUNT.labels(request.method, request.url.path, str(response.status_code)).inc()
+    REQUEST_COUNT.labels(
+        request.method, request.url.path, str(response.status_code)
+    ).inc()
     REQUEST_LATENCY.labels(request.method, request.url.path).observe(elapsed)
     return response
+
 
 # Health endpoints
 @app.get("/health", response_class=PlainTextResponse)
 async def health():
     return "ok"
 
+
 @app.get("/ready", response_class=PlainTextResponse)
 async def ready():
     return "ready"
+
 
 # Metrics (Prometheus)
 @app.get("/metrics")
 async def metrics():
     data = generate_latest(registry)
     return StreamingResponse(iter([data]), media_type=CONTENT_TYPE_LATEST)
+
 
 @app.get("/version")
 async def version():
@@ -69,13 +75,18 @@ async def version():
             ver = (repo_root / "VERSION").read_text().strip()
         except Exception:
             ver = "dev"
-    build_date = os.getenv("APP_BUILD_DATE") or datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-    return JSONResponse({
-        "service": "ai-service",
-        "version": ver,
-        "python_version": sys.version.split()[0],
-        "build_date": build_date,
-    })
+
+    build_date = os.getenv("APP_BUILD_DATE") or datetime.now(UTC).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    return JSONResponse(
+        {
+            "service": "ai-service",
+            "version": ver,
+            "python_version": sys.version.split()[0],
+            "build_date": build_date,
+        }
+    )
 
 # Include AI routes
 app.include_router(ai_router)

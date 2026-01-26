@@ -83,7 +83,9 @@ async def test_post_json_with_auth(monkeypatch):
     monkeypatch.setattr(app_config.settings, "ai_auth_enabled", True)
     monkeypatch.setattr(app_config.settings, "ai_shared_secret", "secret")
 
-    result = await ai_service_client.post_json("/ai/summarize-jql", {"cloud_id": "demo"})
+    result = await ai_service_client.post_json(
+        "/ai/summarize-jql", {"cloud_id": "demo"}
+    )
     assert result["ok"] is True
 
 
@@ -93,7 +95,9 @@ async def test_stream_post_yields(monkeypatch):
     monkeypatch.setattr(ai_service_client.httpx, "AsyncClient", DummyAsyncClient)
 
     chunks = []
-    async for chunk in ai_service_client.stream_post("/ai/analyze-issue/stream", {"cloud_id": "demo"}):
+    async for chunk in ai_service_client.stream_post(
+        "/ai/analyze-issue/stream", {"cloud_id": "demo"}
+    ):
         chunks.append(chunk)
 
     assert chunks == ["a", "b"]
@@ -112,5 +116,7 @@ async def test_stream_post_missing_url_raises(monkeypatch):
     monkeypatch.delenv("AI_SERVICE_URL", raising=False)
     monkeypatch.setattr(app_config.settings, "ai_service_url", None)
     with pytest.raises(RuntimeError):
-        async for _ in ai_service_client.stream_post("/ai/analyze-issue/stream", {"cloud_id": "demo"}):
+        async for _ in ai_service_client.stream_post(
+            "/ai/analyze-issue/stream", {"cloud_id": "demo"}
+        ):
             pass

@@ -4,7 +4,7 @@ import os
 import redis
 from typing import Any, Dict, Optional, cast
 
-from app.core.config import settings
+from .config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +90,10 @@ def get_session(sid: str) -> Optional[Dict[str, Any]]:
 
 
 def set_session(sid: str, session: Dict[str, Any]) -> None:
-    """Store the session in Redis if available; fall back to in-memory store on errors."""
+    """Store the session in Redis if available.
+
+    Falls back to the in-memory store on errors (dev only).
+    """
     key = _key(sid)
     payload = json.dumps(session)
     if not _ensure_redis_available():

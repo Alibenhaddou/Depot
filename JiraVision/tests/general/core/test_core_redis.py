@@ -49,7 +49,10 @@ def test_get_session_falls_back_to_local_store_when_redis_down(monkeypatch):
         raise RuntimeError("redis down")
 
     # expire missing/raising should be ignored
-    fake = types.SimpleNamespace(get=raising_get, expire=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("expire")))
+    fake = types.SimpleNamespace(
+        get=raising_get,
+        expire=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("expire")),
+    )
     monkeypatch.setattr(core_redis, "redis_client", fake)
 
     assert core_redis.get_session("sid") == {"x": 1}
@@ -83,7 +86,9 @@ def test_set_session_falls_back_to_local_store_on_error(monkeypatch):
     def raising_set(*_a, **_k):
         raise RuntimeError("redis down")
 
-    monkeypatch.setattr(core_redis, "redis_client", types.SimpleNamespace(set=raising_set))
+    monkeypatch.setattr(
+        core_redis, "redis_client", types.SimpleNamespace(set=raising_set)
+    )
     monkeypatch.setattr(config.settings, "session_max_age_seconds", 42)
 
     core_redis.set_session("sid", {"k": "v"})
@@ -114,7 +119,9 @@ def test_delete_session_falls_back_to_local_store_on_error(monkeypatch):
     def raising_delete(_k):
         raise RuntimeError("redis down")
 
-    monkeypatch.setattr(core_redis, "redis_client", types.SimpleNamespace(delete=raising_delete))
+    monkeypatch.setattr(
+        core_redis, "redis_client", types.SimpleNamespace(delete=raising_delete)
+    )
     core_redis.delete_session("sid")
 
     assert "session:sid" not in core_redis._local_store

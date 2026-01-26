@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
+from app.core.config import settings
 
 client = TestClient(app)
 
@@ -8,8 +9,7 @@ client = TestClient(app)
 
 def make_auth_cookie(sid="test-session"):
     from itsdangerous import URLSafeSerializer
-    secret = "secret-for-tests"
-    s = URLSafeSerializer(secret, salt="sid")
+    s = URLSafeSerializer(settings.app_secret_key, salt="sid")
     signed_sid = s.dumps(sid)
     return {"sid": signed_sid}
 
@@ -18,12 +18,10 @@ def mock_get_session(monkeypatch, data=None, sid="test-session"):
         data = {
             "access_token": "tok",
             "jira_account_id": "user-1",
-            "tokens_by_cloud": {"cloud-1": {"access_token": "tok"}}
+            "tokens_by_cloud": {"cloud-1": {"access_token": "tok"}},
         }
-    # Injection directe dans le store in-memory du fallback Redis
-    import json as pyjson
     from app.core import redis as redis_mod
-    redis_mod._local_store[f"session:{sid}"] = pyjson.dumps(data)
+    redis_mod.set_session(sid, data)
     return data
 
 def test_add_project_ok(monkeypatch):
@@ -36,11 +34,20 @@ def test_add_project_ok(monkeypatch):
     )
     assert resp.status_code in (200, 201, 400)  # 400 si projet déjà existant
     if resp.status_code == 200:
-        assert resp.json()["project"]["project_key"] == "ABC"
+        payload = resp.json()
+        project = payload.get("project", payload)
+        assert project["project_key"] == "ABC"
 
 def test_list_projects_ok(monkeypatch):
     sid = "test-session"
-    mock_get_session(monkeypatch, sid=sid)
+    mock_get_session(
+        monkeypatch,
+        data={
+            "jira_account_id": "user-1",
+            "tokens_by_cloud": {"cloud-1": {"access_token": "tok"}},
+        },
+        sid=sid,
+    )
     resp = client.get("/po/projects", cookies=make_auth_cookie(sid))
     assert resp.status_code == 200
     assert "projects" in resp.json()

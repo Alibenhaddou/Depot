@@ -28,7 +28,8 @@ async def ui_page(request: Request) -> Response:
     resp = HTMLResponse(_HTML)
     sid = ensure_session(request, resp)
     session = get_session(sid) or {}
-    if not session.get("access_token"):
+    has_tokens = bool(session.get("access_token") or (session.get("tokens_by_cloud") or {}))
+    if not has_tokens:
         redirect = RedirectResponse("/auth")
         ensure_session(request, redirect)
         return redirect
@@ -39,7 +40,7 @@ async def ui_page(request: Request) -> Response:
 async def ui_state(request: Request, response: Response) -> UiState:
     sid = ensure_session(request, response)
     session = get_session(sid) or {}
-    logged_in = bool(session.get("access_token"))
+    logged_in = bool(session.get("access_token") or (session.get("tokens_by_cloud") or {}))
 
     # TODO: remplacer par settings/env
     show_debug = False
