@@ -72,7 +72,8 @@ async def summarize_jql(body: SummarizeJqlBody) -> Dict[str, Any]:
 
 @router.post("/analyze-issue")
 async def analyze_issue(body: AnalyzeIssueBody) -> Dict[str, Any]:
-    # This endpoint accepts the issue key OR a pre-built payload (issue/comments/dependencies).
+    # This endpoint accepts the issue key OR a pre-built payload
+    # (issue/comments/dependencies).
     if body.issue_key is None:
         # expect a full payload provided in request.json (handled by the proxy)
         raise HTTPException(400, "issue_key or payload expected")

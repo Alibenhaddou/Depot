@@ -14,7 +14,9 @@ def verify_ai_token(authorization: str | None = Header(default=None)) -> dict:
 
     token = authorization.split(" ", 1)[1]
     # Token is signed by the main API and validated here.
-    serializer = URLSafeTimedSerializer(settings.ai_shared_secret, salt="ai-service-token")
+    serializer = URLSafeTimedSerializer(
+        settings.ai_shared_secret, salt="ai-service-token"
+    )
     try:
         return serializer.loads(token, max_age=settings.ai_token_ttl_seconds)
     except SignatureExpired:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 import os
 from pathlib import Path
 import time
@@ -14,6 +15,7 @@ from app.routes.ai import router as ai_router
 from app.routes.ui import router as ui_router  # version "choix 2" => prefix="/ui"
 from app.routes.po import router as po_router
 from app.routes.debug import router as debug_router
+from app.routes.po import router as po_router
 from fastapi.responses import RedirectResponse
 from prometheus_client import (
     generate_latest,
@@ -22,6 +24,8 @@ from prometheus_client import (
     Histogram,
     CollectorRegistry,
 )
+
+import platform
 
 from app.core.telemetry import setup_telemetry
 
@@ -41,6 +45,20 @@ def _env_flag(name: str, default: bool = False) -> bool:
 def create_app() -> FastAPI:
     app = FastAPI(title="CT - Delivery Assistant (POC)", version="0.1.0")
 
+    @app.get("/version", include_in_schema=False)
+    async def version() -> dict:
+        # Minimal endpoint used by tests/observability.
+        try:
+            version_str = (Path(__file__).resolve().parents[2] / "VERSION").read_text().strip()
+        except Exception:
+            version_str = app.version
+        return {
+            "service": "api",
+            "version": version_str,
+            "python_version": platform.python_version(),
+            "build_date": time.strftime("%Y-%m-%d"),
+        }
+
     registry = CollectorRegistry()
 
     REQUEST_COUNT = Counter(
@@ -57,16 +75,21 @@ def create_app() -> FastAPI:
     )
 
     @app.middleware("http")
-    async def metrics_middleware(request: Request, call_next):
+    async def metrics_middleware(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
         start = time.perf_counter()
         response = await call_next(request)
         elapsed = time.perf_counter() - start
-        REQUEST_COUNT.labels(request.method, request.url.path, str(response.status_code)).inc()
+        REQUEST_COUNT.labels(
+            request.method, request.url.path, str(response.status_code)
+        ).inc()
         REQUEST_LATENCY.labels(request.method, request.url.path).observe(elapsed)
         return response
 
     @app.get("/metrics", include_in_schema=False)
-    async def metrics():
+    async def metrics() -> Response:
         data = generate_latest(registry)
         return Response(content=data, media_type=CONTENT_TYPE_LATEST)
 

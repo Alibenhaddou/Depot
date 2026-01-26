@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 import os
 
+from fastapi import FastAPI
 
-def setup_telemetry(app, service_name: str) -> None:
+
+def setup_telemetry(app: FastAPI, service_name: str) -> None:
     endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
     if not endpoint:
         # No endpoint configured => tracing disabled.
@@ -12,7 +16,9 @@ def setup_telemetry(app, service_name: str) -> None:
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+            OTLPSpanExporter,
+        )
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
         from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
     except Exception:

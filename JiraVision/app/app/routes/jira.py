@@ -181,7 +181,7 @@ async def jira_search(
 async def jira_instances(request: Request, response: Response) -> Dict[str, Any]:
     sid = _ensure_sid(request, response)
     session = get_session(sid) or {}
-
+    tokens_by_cloud = session.get("tokens_by_cloud") or {}
     sites = session.get("jira_sites") or []
     safe_sites = []
     for s in sites:
@@ -190,8 +190,18 @@ async def jira_instances(request: Request, response: Response) -> Dict[str, Any]
                 {"id": s.get("id"), "name": s.get("name"), "url": s.get("url")}
             )
 
+    if not safe_sites and tokens_by_cloud:
+        for cid, entry in tokens_by_cloud.items():
+            safe_sites.append(
+                {
+                    "id": cid,
+                    "name": entry.get("name") or entry.get("site_url") or cid,
+                    "url": entry.get("site_url"),
+                }
+            )
+
     return {
-        "cloud_ids": session.get("cloud_ids") or [],
+        "cloud_ids": session.get("cloud_ids") or list(tokens_by_cloud.keys()),
         "active_cloud_id": session.get("active_cloud_id"),
         "jira_sites": safe_sites,
     }

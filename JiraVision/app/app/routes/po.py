@@ -39,8 +39,8 @@ def _get_jira_account_id(request: Request, response: Response) -> str:
     """Get the current user's Jira account ID from session."""
     sid = ensure_session(request, response)
     session = get_session(sid) or {}
-    
-    if not session.get("access_token"):
+
+    if not (session.get("access_token") or (session.get("tokens_by_cloud") or {})):
         raise HTTPException(401, "Non authentifié")
     
     jira_account_id = session.get("jira_account_id")
@@ -104,9 +104,9 @@ async def refresh_projects(
             if proj.get("mask_type") == "definitif":
                 po_project_store.set_project_mask(
                     jira_account_id,
-                    proj["project_key"],
+                    project_key=proj["project_key"],
+                    cloud_id=proj.get("cloud_id"),
                     mask_type="none",
-                    cloud_id=proj.get("cloud_id")
                 )
     
     try:

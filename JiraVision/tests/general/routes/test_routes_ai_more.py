@@ -164,7 +164,6 @@ def test_analyze_issue_stream_success_with_links(monkeypatch):
         assert "event: result" in text
         assert "ok-summary" in text
 
-
     def test_analyze_issue_stream_logs_no_dependency_when_no_links(monkeypatch):
         monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
         monkeypatch.setattr(
@@ -218,7 +217,6 @@ def test_analyze_issue_stream_success_with_links(monkeypatch):
             assert "event: result" in text
             assert "ok-summary" in text
 
-
     def test_analyze_issue_stream_generic_exception_yields_502_error(monkeypatch):
         monkeypatch.setattr("app.routes.ai.ensure_session", lambda req, resp: "sid")
         monkeypatch.setattr(
@@ -254,7 +252,6 @@ def test_analyze_issue_stream_success_with_links(monkeypatch):
 
             assert "event: error" in text
             assert "Erreur lors de l'appel Jira (issue)" in text
-
 
     def test_analyze_issue_stream_generic_exception_is_traced_by_coverage(monkeypatch):
         # Same scenario as above, but call the async handler directly to avoid

@@ -20,6 +20,12 @@ os.environ.setdefault("atlassian_redirect_uri", "")
 os.environ.setdefault("atlassian_scopes", "read:jira")
 os.environ.setdefault("app_secret_key", "secret-for-tests")
 
+# Ensure LLM defaults don't depend on a developer-local `.env`.
+# Tests monkeypatch LLM calls anyway; we just need imports to be safe.
+os.environ.setdefault("llm_provider", "ollama")
+os.environ.setdefault("llm_base_url", "http://localhost:11434")
+os.environ.setdefault("llm_model", "qwen2.5:3b")
+
 try:
     importlib.import_module("fastapi")
 except Exception:

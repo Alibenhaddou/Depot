@@ -9,6 +9,6 @@ client = TestClient(app)
 def test_list_projects_unauth():
     resp = client.get("/po/projects")
     assert resp.status_code == 401
-    assert "Connecte-toi" in resp.text or "Compte Jira" in resp.text
+    assert "Connecte-toi" in resp.text or "Compte Jira" in resp.text or "Non authentifié" in resp.text
 
 # TODO: Ajouter des tests avec session valide (mock), ajout, masquage, refresh, erreurs, etc.

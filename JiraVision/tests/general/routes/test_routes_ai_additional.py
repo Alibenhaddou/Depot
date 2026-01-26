@@ -121,7 +121,7 @@ def test_analyze_issue_stream_jira_404(monkeypatch):
         )
         assert "event: error" in text
         # depending on how the exception is raised,
-    # the stream may contain a 404 or a 502 message
+        # the stream may contain a 404 or a 502 message
         assert ("404" in text) or ("Erreur lors de l'appel Jira" in text)
 
 

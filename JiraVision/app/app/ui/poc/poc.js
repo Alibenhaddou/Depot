@@ -5,6 +5,23 @@
   /* utils                                                               */
   /* ------------------------------------------------------------------ */
 
+  const tryJson = (text) => {
+    try {
+      return JSON.parse(text);
+    } catch {
+      return null;
+    }
+  };
+
+  const safePath = (p, fallback = "/") =>
+    typeof p === "string" && p.startsWith("/") ? p : fallback;
+
+  const withCacheBuster = (url) => {
+    const u = new URL(url, window.location.origin);
+    u.searchParams.set("_ts", String(Date.now()));
+    return u.toString();
+  };
+
   let announceTimeoutId;
   const announce = (msg) => {
     const node = $("panelStatus");
@@ -22,18 +39,6 @@
       if (visible) visible.textContent = msg;
     }, 50);
   };
-
-  const tryJson = (text) => { try { return JSON.parse(text); } catch { return null; } };
-
-  const safePath = (p, fallback = "/") =>
-    (typeof p === "string" && p.startsWith("/")) ? p : fallback;
-
-  const withCacheBuster = (url) => {
-    const u = new URL(url, window.location.origin);
-    u.searchParams.set("_ts", String(Date.now()));
-    return u.toString();
-  };
-
   const fetchText = async (url, opts = {}) => {
     const res = await fetch(withCacheBuster(url), {
       credentials: "same-origin",
@@ -67,10 +72,8 @@
     const logoutArea = $("logoutArea");
     if (!logoutArea) return;
 
-    // login / logout
     const logged = Boolean(state.logged_in);
     logoutArea.replaceChildren();
-
     if (!logged) return;
 
     const a = el("a", { href: safePath(state.logout_url, "/logout") });
@@ -79,35 +82,8 @@
     logoutArea.appendChild(a);
   }
 
-  function renderInstanceList(sites) {
-    const list = $("instanceList");
-    if (!list) return;
-
-    list.replaceChildren();
-
-    if (!sites.length) {
-      list.appendChild(el("span", { class: "pill inactive", text: "Aucune" }));
-      return;
-    }
-
-    for (const s of sites) {
-      const label = s.name || s.url || s.id;
-      const isActive = activeCloudIds.has(s.id);
-      const cls = isActive ? "pill active" : "pill inactive";
-      const btn = el("button", {
-        type: "button",
-        class: cls,
-        text: label,
-        "data-cloud-id": s.id,
-        "aria-pressed": isActive ? "true" : "false",
-      });
-      btn.addEventListener("click", () => toggleCloudId(s.id));
-      list.appendChild(btn);
-    }
-  }
-
   /* ------------------------------------------------------------------ */
-  /* jira multi-instance                                                  */
+  /* jira multi-instance                                                 */
   /* ------------------------------------------------------------------ */
 
   const activeCloudIds = new Set();
@@ -502,43 +478,30 @@
     announce("Projet masqué.");
   }
 
-  async function streamSse(url, options, onEvent) {
-    const res = await fetch(url, options);
-    if (!res.ok) {
-      const text = await res.text();
-      onEvent("error", JSON.stringify({ code: res.status, message: text }));
+  function renderInstanceList(sites) {
+    const list = $("instanceList");
+    if (!list) return;
+
+    list.replaceChildren();
+
+    if (!sites.length) {
+      list.appendChild(el("span", { class: "pill inactive", text: "Aucune" }));
       return;
     }
-    const reader = res.body?.getReader();
-    if (!reader) {
-      onEvent("error", JSON.stringify({ code: 0, message: "Aucun flux recu." }));
-      return;
-    }
 
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let currentEvent = "message";
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      const parts = buffer.split("\n\n");
-      buffer = parts.pop() || "";
-      for (const part of parts) {
-        const lines = part.split("\n");
-        let data = "";
-        currentEvent = "message";
-        for (const line of lines) {
-          if (line.startsWith("event:")) {
-            currentEvent = line.slice(6).trim();
-          } else if (line.startsWith("data:")) {
-            data += line.slice(5).trim();
-          }
-        }
-        if (data) onEvent(currentEvent, data);
-      }
+    for (const s of sites) {
+      const label = s.name || s.url || s.id;
+      const isActive = activeCloudIds.has(s.id);
+      const cls = isActive ? "pill active" : "pill inactive";
+      const btn = el("button", {
+        type: "button",
+        class: cls,
+        text: label,
+        "data-cloud-id": s.id,
+        "aria-pressed": isActive ? "true" : "false",
+      });
+      btn.addEventListener("click", () => toggleCloudId(s.id));
+      list.appendChild(btn);
     }
   }
 
@@ -578,17 +541,55 @@
   }
 
   /* ------------------------------------------------------------------ */
-  /* jira actions                                                         */
+  /* jira actions                                                        */
   /* ------------------------------------------------------------------ */
 
+  async function streamSse(url, options, onEvent) {
+    const res = await fetch(url, options);
+    if (!res.ok) {
+      const text = await res.text();
+      onEvent("error", JSON.stringify({ code: res.status, message: text }));
+      return;
+    }
+    const reader = res.body?.getReader();
+    if (!reader) {
+      onEvent("error", JSON.stringify({ code: 0, message: "Aucun flux recu." }));
+      return;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() || "";
+      for (const part of parts) {
+        const lines = part.split("\n");
+        let data = "";
+        let currentEvent = "message";
+        for (const line of lines) {
+          if (line.startsWith("event:")) currentEvent = line.slice(6).trim();
+          else if (line.startsWith("data:")) data += line.slice(5).trim();
+        }
+        if (data) onEvent(currentEvent, data);
+      }
+    }
+  }
+
   async function fetchIssue(mode) {
-    const key = $("issue").value.trim();
+    const issueEl = $("issue");
     const out = $("out");
     const status = $("issueStatus");
-    if (!out) return;
+    if (!out || !issueEl) return;
 
+    const key = issueEl.value.trim();
     if (status) status.textContent = "";
     out.textContent = "";
+
     if (!key) {
       const msg = "Renseigne une clé (ex: ABC-123).";
       if (status) status.textContent = msg;
@@ -615,14 +616,12 @@
     await new Promise((resolve) => requestAnimationFrame(resolve));
 
     let lastError = null;
-    const limits = mode === "detail"
-      ? { max_links: 4, max_comments: 6 }
-      : { max_links: 1, max_comments: 1 };
+    const limits =
+      mode === "detail" ? { max_links: 4, max_comments: 6 } : { max_links: 1, max_comments: 1 };
 
     for (const cloudId of activeIds) {
       log(`🔎 Instance ${getSiteLabel(cloudId)} — demarrage de l'analyse…`);
 
-      let done = false;
       let hasResult = false;
       let errorCode = null;
       let errorMsg = null;
@@ -647,13 +646,11 @@
             const text = payload?.text || data;
             if (status) status.textContent = logs.join("\n") + "\n\n---\nResultat:";
             out.textContent = text;
-            done = true;
             hasResult = true;
           } else if (event === "error") {
             const payload = tryJson(data);
             errorCode = payload?.code || null;
             errorMsg = payload?.message || data;
-            done = true;
           }
         }
       );
@@ -663,9 +660,7 @@
         log(`⚠️ Ticket introuvable sur ${getSiteLabel(cloudId)}.`);
         continue;
       }
-      if (done && errorMsg) {
-        lastError = errorMsg;
-      }
+      if (errorMsg) lastError = errorMsg;
     }
 
     const finalMsg = lastError || "Aucune instance n'a repondu.";
@@ -674,11 +669,13 @@
   }
 
   async function searchJql() {
-    const jql = $("jql").value.trim();
+    const jqlEl = $("jql");
     const out = $("out2");
-    if (!out) return;
+    if (!out || !jqlEl) return;
 
+    const jql = jqlEl.value.trim();
     out.textContent = "";
+
     if (!jql) {
       out.textContent = "Renseigne un JQL.";
       return;
@@ -696,8 +693,7 @@
 
     for (const cloudId of activeIds) {
       const r = await fetchJson(
-        "/jira/search?jql=" + encodeURIComponent(jql) +
-        "&cloud_id=" + encodeURIComponent(cloudId)
+        "/jira/search?jql=" + encodeURIComponent(jql) + "&cloud_id=" + encodeURIComponent(cloudId)
       );
       if (!r.ok || !r.json) {
         lastError = r.text || `Erreur (${r.status})`;
@@ -714,72 +710,112 @@
       return;
     }
 
-    out.textContent = JSON.stringify(
-      {
-        total,
-        returned: allIssues.length,
-        issues: allIssues,
-      },
-      null,
-      2
-    );
+    out.textContent = JSON.stringify({ total, returned: allIssues.length, issues: allIssues }, null, 2);
   }
 
   const aiSummary = async () => {
-  const out = $("out2");
-  try {
-    const jql = $("jql").value.trim();
-    const activeIds = getActiveCloudIds();
+    const out = $("out2");
+    const jqlEl = $("jql");
+    if (!out || !jqlEl) return;
 
-    if (!jql) { out.textContent = "Renseigne un JQL."; return; }
-    if (!activeIds.length) { out.textContent = "Active au moins une instance Jira."; return; }
+    try {
+      const jql = jqlEl.value.trim();
+      const activeIds = getActiveCloudIds();
 
-    out.textContent = "⏳ Résumé IA en cours…";
-
-    const allIssues = [];
-    let lastError = null;
-
-    for (const cloudId of activeIds) {
-      const r = await fetchText("/ai/summarize-jql", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jql,
-          cloud_id: cloudId,
-          max_results: 20
-        }),
-      });
-
-      if (r.ok) {
-        allIssues.push({ cloud_id: cloudId, summary: r.text });
-        continue;
+      if (!jql) {
+        out.textContent = "Renseigne un JQL.";
+        return;
+      }
+      if (!activeIds.length) {
+        out.textContent = "Active au moins une instance Jira.";
+        return;
       }
 
-      lastError = r.text || "Erreur IA";
+      out.textContent = "⏳ Résumé IA en cours…";
+
+      const allIssues = [];
+      let lastError = null;
+
+      for (const cloudId of activeIds) {
+        const r = await fetchText("/ai/summarize-jql", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jql, cloud_id: cloudId, max_results: 20 }),
+        });
+
+        if (r.ok) {
+          allIssues.push({ cloud_id: cloudId, summary: r.text });
+          continue;
+        }
+        lastError = r.text || "Erreur IA";
+      }
+
+      if (!allIssues.length && lastError) {
+        out.textContent = lastError;
+        return;
+      }
+
+      if (activeIds.length === 1 && allIssues.length === 1) {
+        out.textContent = allIssues[0].summary || "(réponse vide)";
+        return;
+      }
+
+      out.textContent = allIssues
+        .map((it) => `Instance ${it.cloud_id}:\n${it.summary}`)
+        .join("\n\n");
+    } catch (e) {
+      out.textContent = "❌ Erreur JS: " + String(e);
+      console.error(e);
     }
-
-    if (!allIssues.length && lastError) {
-      out.textContent = lastError;
-      return;
-    }
-
-    if (activeIds.length === 1 && allIssues.length === 1) {
-      out.textContent = allIssues[0].summary || "(réponse vide)";
-      return;
-    }
-
-    out.textContent = allIssues
-      .map((it) => `Instance ${it.cloud_id}:\n${it.summary}`)
-      .join("\n\n");
-  } catch (e) {
-    out.textContent = "❌ Erreur JS: " + String(e);
-    console.error(e);
-  }
-};
-
+  };
 
   /* ------------------------------------------------------------------ */
-  /* boot                                                                 */
+  /* Panel Projets PO                                                    */
+  /* ------------------------------------------------------------------ */
+
+  async function loadPoProjects() {
+    const panel = $("poProjectsPanel");
+    const loading = $("poProjectsLoading");
+    const error = $("poProjectsError");
+    const list = $("poProjectsList");
+    const empty = $("poProjectsEmpty");
+    if (!panel || !loading || !error || !list || !empty) return;
+
+    panel.style.display = "block";
+    loading.style.display = "block";
+    error.style.display = "none";
+    list.innerHTML = "";
+    empty.style.display = "none";
+
+    try {
+      const r = await fetchJson("/po/projects");
+      loading.style.display = "none";
+      if (!r.ok || !r.json) {
+        error.textContent = "Erreur lors du chargement des projets PO.";
+        error.style.display = "block";
+        return;
+      }
+
+      const projects = r.json.projects || [];
+      if (!projects.length) {
+        empty.style.display = "block";
+        return;
+      }
+
+      for (const p of projects) {
+        const li = document.createElement("li");
+        li.textContent = `${p.project_key} — ${p.project_name}`;
+        list.appendChild(li);
+      }
+    } catch {
+      loading.style.display = "none";
+      error.textContent = "Erreur réseau ou serveur.";
+      error.style.display = "block";
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* boot                                                                */
   /* ------------------------------------------------------------------ */
 
   async function boot() {
@@ -795,7 +831,8 @@
     }
 
     renderTopbar(s.json);
-    refreshSites();
+    await refreshSites();
+
     // Synchronisation automatique des projets PO au démarrage
     await refreshProjects();
 
@@ -819,6 +856,7 @@
 
     const btnIssueQuick = $("btnIssueQuick");
     if (btnIssueQuick) btnIssueQuick.addEventListener("click", () => fetchIssue("quick"));
+
     const btnIssueDetail = $("btnIssueDetail");
     if (btnIssueDetail) btnIssueDetail.addEventListener("click", () => fetchIssue("detail"));
     const issueInput = $("issue");
@@ -832,8 +870,12 @@
     }
     const btnSearch = $("btnSearch");
     if (btnSearch) btnSearch.addEventListener("click", searchJql);
+
     const btnAi = $("btnAi");
     if (btnAi) btnAi.addEventListener("click", aiSummary);
+
+    // PO panel
+    await loadPoProjects();
   }
 
   window.addEventListener("DOMContentLoaded", () => {

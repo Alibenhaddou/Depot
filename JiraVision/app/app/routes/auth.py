@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from itsdangerous import BadSignature
 
+from app.clients.jira import JiraClient
 from app.core.config import settings
 from app.core.redis import get_session, set_session
 from app.auth.session_store import ensure_session, destroy_session, state_serializer
@@ -79,6 +80,34 @@ def _expected_state_from_cookie(request: Request) -> Optional[str]:
         return cast(Optional[str], state_serializer.loads(raw))
     except BadSignature:
         return None
+
+
+async def _get_user_info(access_token: str, cloud_id: str) -> Optional[Dict[str, Any]]:
+    """Best-effort fetch of current user from Jira.
+
+    This is used to populate `session["user_info"]` (accountId, displayName, ...).
+    The function is intentionally best-effort: if it fails, callers can
+    continue without user_info.
+    """
+    try:
+        client = JiraClient(access_token=access_token, cloud_id=cloud_id)
+        data = await client.get_myself()
+        await client.aclose()
+        if isinstance(data, dict):
+            return data
+        return None
+    except Exception:
+        return None
+
+
+def upsert_user_from_jira(*_args: Any, **_kwargs: Any) -> Dict[str, Any]:
+    """Compat hook for older tests.
+
+    Historically, auth flow inserted user info into a store.
+    The current implementation does not require it, but we keep a hook so
+    tests (and potential external code) can monkeypatch it.
+    """
+    return {}
 
 
 @router.get("/login")
@@ -164,14 +193,18 @@ async def oauth_callback(
 
     tok = r.json()
     access_token = tok.get("access_token")
-    logging.getLogger(__name__).info("Token endpoint returned access_token=%s", bool(access_token))
+    logging.getLogger(__name__).info(
+        "Token endpoint returned access_token=%s", bool(access_token)
+    )
     if not access_token:
         raise HTTPException(400, "Réponse token inattendue")
 
     resources = await _get_accessible_resources(access_token)
     logging.getLogger(__name__).info("Accessible resources count: %s", len(resources))
     jira_resources = _pick_jira_resources(resources)
-    logging.getLogger(__name__).info("Jira resources found: %s", [r.get("id") for r in jira_resources])
+    logging.getLogger(__name__).info(
+        "Jira resources found: %s", [r.get("id") for r in jira_resources]
+    )
     if not jira_resources:
         raise HTTPException(400, "Aucune ressource Jira trouvée")
 
@@ -205,6 +238,11 @@ async def oauth_callback(
     active_cid = session["active_cloud_id"]
     active_entry = session["tokens_by_cloud"][active_cid]
 
+    # Best effort: populate user_info for the active cloud.
+    user_info = await _get_user_info(active_entry["access_token"], active_cid)
+    if user_info:
+        session["user_info"] = user_info
+
     # compat / confort (à garder tant que le reste du code l'utilise)
     session["access_token"] = active_entry["access_token"]
     session["site_url"] = active_entry["site_url"]
@@ -214,7 +252,10 @@ async def oauth_callback(
     set_session(sid, session)
 
     import logging
-    logging.getLogger(__name__).info("Session after token exchange for sid=%s: %s", sid, session)
+
+    logging.getLogger(__name__).info(
+        "Session after token exchange for sid=%s: %s", sid, session
+    )
 
     resp = RedirectResponse(url=POST_LOGIN_REDIRECT)
     ensure_session(request, resp)

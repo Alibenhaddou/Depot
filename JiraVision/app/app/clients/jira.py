@@ -131,6 +131,10 @@ class JiraClient:
         """Fetch the current user's profile from Jira /myself endpoint."""
         return await self._request("GET", "/myself")
 
+    # Backward-compatible alias used by older tests/code.
+    async def get_myself(self) -> Any:
+        return await self.get_current_user()
+
 
 def select_cloud_id(session: Dict[str, Any], request: Request) -> str:
     """
