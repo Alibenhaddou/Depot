@@ -115,7 +115,8 @@ def test_telemetry_no_endpoint(monkeypatch):
 
 
 def test_telemetry_import_error(monkeypatch):
-    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel")
+    # Sonar: http insecure -> utiliser https même en tests.
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://otel")
     real_import = __import__
 
     def fake_import(name, *args, **kwargs):
@@ -150,7 +151,8 @@ def test_llm_client_openai_missing_key_raises(monkeypatch):
 def test_llm_chat_json_ollama_invalid_json_maps_502(monkeypatch):
     # Force provider=ollama
     monkeypatch.setattr(ai_llm.settings, "llm_provider", "ollama")
-    monkeypatch.setattr(ai_llm.settings, "llm_base_url", "http://ollama:11434")
+    # Sonar: http insecure -> utiliser https même en tests.
+    monkeypatch.setattr(ai_llm.settings, "llm_base_url", "https://ollama:11434")
     monkeypatch.setattr(ai_llm.settings, "llm_model", "m")
 
     client = ai_llm.LLMClient()
@@ -183,7 +185,8 @@ def test_llm_chat_json_ollama_invalid_json_maps_502(monkeypatch):
 
 def test_llm_chat_text_ollama_empty_response_maps_502(monkeypatch):
     monkeypatch.setattr(ai_llm.settings, "llm_provider", "ollama")
-    monkeypatch.setattr(ai_llm.settings, "llm_base_url", "http://ollama:11434")
+    # Sonar: http insecure -> utiliser https même en tests.
+    monkeypatch.setattr(ai_llm.settings, "llm_base_url", "https://ollama:11434")
     monkeypatch.setattr(ai_llm.settings, "llm_model", "m")
 
     client = ai_llm.LLMClient()
