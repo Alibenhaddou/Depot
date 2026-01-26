@@ -16,8 +16,8 @@ from typing import Optional, cast
 from fastapi import HTTPException, Request, Response
 from itsdangerous import BadSignature, URLSafeSerializer
 
-from app.core.config import settings
-from app.core.redis import delete_session, get_session, set_session
+from ..core.config import settings
+from ..core.redis import delete_session, get_session, set_session
 
 # -------------------------------------------------------------------
 # Cookie signing

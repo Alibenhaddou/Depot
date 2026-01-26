@@ -8,14 +8,14 @@ import time
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 
-from app.routes.auth import router as auth_router
-from app.routes.auth_ui import router as auth_ui_router
-from app.routes.jira import router as jira_router
-from app.routes.ai import router as ai_router
-from app.routes.ui import router as ui_router  # version "choix 2" => prefix="/ui"
-from app.routes.po import router as po_router
-from app.routes.debug import router as debug_router
-from app.routes.po import router as po_router
+from .routes.auth import router as auth_router
+from .routes.auth_ui import router as auth_ui_router
+from .routes.jira import router as jira_router
+from .routes.ai import router as ai_router
+from .routes.ui import router as ui_router  # version "choix 2" => prefix="/ui"
+from .routes.po import router as po_router
+from .routes.debug import router as debug_router
+from .routes.po import router as po_router
 from fastapi.responses import RedirectResponse
 from prometheus_client import (
     generate_latest,

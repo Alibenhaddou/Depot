@@ -56,13 +56,27 @@ async def list_projects(request: Request, response: Response) -> Dict[str, Any]:
     session = _get_session(request, response)
     account_id = session.get("jira_account_id")
 
+    # Correction bug #48 : filtrer les projets actifs selon la nouvelle règle métier
     items = po_project_store.list_projects_for_user(account_id)
-    split = _split_projects(items)
+    active_projects = []
+    inactive_projects = []
+
+    for p in items:
+        # Récupérer le nombre de tickets Story/Etude non terminés/annulés assignés à l'utilisateur
+        story_count = p.get("story_open_assigned_count", 0) or 0
+        etude_count = p.get("etude_open_assigned_count", 0) or 0
+        story_etude_count = story_count + etude_count
+
+        if story_etude_count > 0:
+            active_projects.append(p)
+        else:
+            inactive_projects.append(p)
+
     user = po_project_store.get_user(account_id) or {}
 
     return {
-        "projects": split["active"],
-        "inactive_projects": split["inactive"],
+        "projects": active_projects,
+        "inactive_projects": inactive_projects,
         "last_synced_at": user.get("last_synced_at"),
     }
 

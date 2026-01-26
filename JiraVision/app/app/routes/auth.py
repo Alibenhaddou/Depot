@@ -10,10 +10,10 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from itsdangerous import BadSignature
 
-from app.clients.jira import JiraClient
-from app.core.config import settings
-from app.core.redis import get_session, set_session
-from app.auth.session_store import ensure_session, destroy_session, state_serializer
+from ..clients.jira import JiraClient
+from ..core.config import settings
+from ..core.redis import get_session, set_session
+from ..auth.session_store import ensure_session, destroy_session, state_serializer
 
 router = APIRouter(tags=["auth"])
 

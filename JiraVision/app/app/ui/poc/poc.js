@@ -174,17 +174,35 @@
     return { visible, masked, maskedItems };
   }
 
+  let toastTimeout;
+  function showToast(message, variant = "info") {
+    const toast = $("toast");
+    if (!toast) return;
+    toast.textContent = message;
+    toast.className = `toast ${variant} show`;
+    window.clearTimeout(toastTimeout);
+    toastTimeout = window.setTimeout(() => {
+      toast.classList.remove("show");
+    }, 4000);
+  }
+
   function renderProjects() {
     const tabs = $("projectTabs");
-    const detail = $("projectDetail");
+    const detailTitle = $("projectTitle");
+    const detailMeta = $("projectMeta");
+    const detailBadge = $("projectStatusBadge");
+    const statStories = $("statStories");
+    const statEtudes = $("statEtudes");
+    const statSynced = $("statSynced");
     const inactiveList = $("inactiveList");
     const btnMaskTemp = $("btnMaskTemp");
     const btnMaskDef = $("btnMaskDef");
     const btnReadd = $("btnReadd");
     const filtersContainer = $("projectFilters");
     const toggleInactive = $("toggleInactive");
+    const skeleton = $("projectsSkeleton");
 
-    if (!tabs || !detail || !inactiveList) return;
+    if (!tabs || !inactiveList) return;
 
     const activeSplit = splitMasked(projectState.projects);
     const inactiveSplit = splitMasked(projectState.inactive);
@@ -243,6 +261,7 @@
     }
 
     tabs.replaceChildren();
+    if (skeleton) skeleton.style.display = "none";
     const tabButtons = [];
     const emptyMessages = {
       active: "Aucun projet actif",
@@ -258,14 +277,25 @@
         const isSelected = pid === projectState.selectedId;
         const btn = el("button", {
           type: "button",
-          class: `project-tab${isSelected ? " active" : ""}`,
-          text: p.project_key,
+          class: `project-card${isSelected ? " active" : ""}`,
           role: "tab",
           "aria-selected": isSelected ? "true" : "false",
-          "aria-controls": "projectDetail",
+          "aria-controls": "projectTitle",
           id: `project-tab-${pid}`,
           tabindex: isSelected ? "0" : "-1",
         });
+        const title = el("div", { class: "title", text: p.project_key });
+        const statusBadge = el("span", {
+          class: `badge ${p.is_active === false ? "warn" : "ok"}`,
+          text: p.is_active === false ? "Inactif" : "Actif",
+        });
+        title.appendChild(statusBadge);
+        const meta = el("div", { class: "meta", text: p.project_name || "–" });
+        const activity = el("div", { class: "activity-chip" });
+        activity.textContent = `${projectScore(p)} focus`;
+        btn.appendChild(title);
+        btn.appendChild(meta);
+        btn.appendChild(activity);
         btn.addEventListener("click", () => {
           projectState.selectedId = pid;
           projectState.lastInteractionWasKeyboard = false;
@@ -882,3 +912,4 @@
     boot().catch((e) => console.error("Boot error", e));
   });
 })();
+</replace_in_file>

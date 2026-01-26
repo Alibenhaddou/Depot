@@ -10,9 +10,9 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.auth.session_store import ensure_session
-from app.core.redis import get_session
-from app.core.config import settings
+from ..auth.session_store import ensure_session
+from ..core.redis import get_session
+from ..core.config import settings
 from app.core.ai_token import generate_ai_token
 from app.clients.jira import JiraClient, select_cloud_id
 import os

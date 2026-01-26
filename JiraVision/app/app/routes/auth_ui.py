@@ -6,8 +6,8 @@ from fastapi import APIRouter, Request, Response
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-from app.auth.session_store import ensure_session
-from app.core.redis import get_session
+from ..auth.session_store import ensure_session
+from ..core.redis import get_session
 
 router = APIRouter(prefix="/auth", tags=["ui-auth"])
 

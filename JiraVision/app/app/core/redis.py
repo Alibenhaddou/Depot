@@ -4,7 +4,7 @@ import os
 import redis
 from typing import Any, Dict, Optional, cast
 
-from app.core.config import settings
+from .config import settings
 
 logger = logging.getLogger(__name__)
 

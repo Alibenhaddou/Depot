@@ -5,9 +5,9 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Request, Response
 
-from app.auth.session_store import ensure_session
-from app.core.redis import get_session, set_session
-from app.clients.jira import JiraClient, select_cloud_id
+from ..auth.session_store import ensure_session
+from ..core.redis import get_session, set_session
+from ..clients.jira import JiraClient, select_cloud_id
 
 router = APIRouter(prefix="/jira", tags=["jira"])
 
